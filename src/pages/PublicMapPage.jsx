@@ -19,7 +19,14 @@ export default function PublicMapPage() {
   const [fotoLocali, setFotoLocali] = useState({})
   const [stato, setStato] = useState('caricamento') // caricamento | ok | errore
   const [filtri, setFiltri] = useState({ cpc: [...CPC_CLASSI], specie: '', ricerca: '' })
-  const [filtriAperti, setFiltriAperti] = useState(true)
+  const [filtriAperti, setFiltriAperti] = useState(() => window.innerWidth >= 640)
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 640px)')
+    const aggiornaLayout = (evento) => setFiltriAperti(evento.matches)
+    media.addEventListener('change', aggiornaLayout)
+    return () => media.removeEventListener('change', aggiornaLayout)
+  }, [])
 
   useEffect(() => {
     ;(async () => {
@@ -84,11 +91,11 @@ export default function PublicMapPage() {
     }))
 
   if (stato === 'caricamento') {
-    return <div className="flex h-screen items-center justify-center text-slate-500">Caricamento mappa…</div>
+    return <div className="flex h-dvh items-center justify-center text-slate-500">Caricamento mappa…</div>
   }
   if (stato === 'errore') {
     return (
-      <div className="flex h-screen items-center justify-center p-4">
+      <div className="flex h-dvh items-center justify-center p-4">
         <div className="card max-w-md text-center">
           <div className="text-5xl">🔒</div>
           <h1 className="mt-3 text-lg font-bold">Link non valido</h1>
@@ -102,8 +109,8 @@ export default function PublicMapPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="z-20 flex items-center gap-3 bg-green-800 px-4 py-2.5 text-white shadow-md">
+    <div className="flex h-dvh flex-col">
+      <header className="safe-top z-20 flex items-center gap-3 bg-green-800 px-4 py-2.5 text-white shadow-md">
         <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-9 w-9" />
         <div className="min-w-0">
           <h1 className="truncate text-base font-bold leading-tight">
@@ -123,12 +130,38 @@ export default function PublicMapPage() {
       </header>
 
       <div className="relative flex min-h-0 flex-1">
+        {filtriAperti && (
+          <button
+            type="button"
+            aria-label="Chiudi filtri"
+            className="absolute inset-0 z-20 bg-slate-950/35 sm:hidden"
+            onClick={() => setFiltriAperti(false)}
+          />
+        )}
+
         <aside
-          className={`z-10 w-72 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white ${
-            filtriAperti ? 'flex' : 'hidden'
-          } sm:flex`}
+          className={`absolute inset-x-0 bottom-0 z-30 flex max-h-[78%] shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl transition-transform duration-200 sm:relative sm:inset-auto sm:z-10 sm:max-h-none sm:w-72 sm:rounded-none sm:border-r sm:border-t-0 sm:shadow-none ${
+            filtriAperti ? 'translate-y-0' : 'translate-y-full sm:translate-y-0'
+          }`}
         >
-          <div className="space-y-5 p-4">
+          <div className="border-b border-slate-100 px-4 pb-2 pt-3 sm:hidden">
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300" />
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-green-900">Filtri mappa</h2>
+                <p className="text-xs text-slate-500">{filtrati.length} alberi visualizzati</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600"
+                onClick={() => setFiltriAperti(false)}
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-5 overflow-y-auto p-4">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
                 Quadro generale

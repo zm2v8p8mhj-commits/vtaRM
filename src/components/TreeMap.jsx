@@ -33,7 +33,14 @@ export default function TreeMap({ alberi, fotoDi, nomeComune = '', onModifica })
     }).addTo(map)
     markersRef.current = L.layerGroup().addTo(map)
     mapRef.current = map
+
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize({ animate: false })
+    })
+    resizeObserver.observe(mapEl.current)
+
     return () => {
+      resizeObserver.disconnect()
       map.remove()
       mapRef.current = null
     }

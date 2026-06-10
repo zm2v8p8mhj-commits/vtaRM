@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { CPC_CLASSI, CPC_META } from '../lib/constants'
@@ -12,7 +12,15 @@ export default function MapPage() {
   const { alberi, comuni, fotoDi } = useApp()
   const navigate = useNavigate()
   const [filtri, setFiltri] = useState(FILTRI_INIZIALI)
-  const [sidebarAperta, setSidebarAperta] = useState(true)
+  // su telefono la sidebar parte chiusa e si apre sopra la mappa (overlay)
+  const [sidebarAperta, setSidebarAperta] = useState(() => window.innerWidth >= 640)
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 640px)')
+    const aggiornaLayout = (evento) => setSidebarAperta(evento.matches)
+    media.addEventListener('change', aggiornaLayout)
+    return () => media.removeEventListener('change', aggiornaLayout)
+  }, [])
 
   const specieDisponibili = useMemo(
     () => [...new Set(alberi.map((a) => a.specie_botanica).filter(Boolean))].sort(),
@@ -47,13 +55,41 @@ export default function MapPage() {
 
   return (
     <div className="relative flex h-full">
+      {sidebarAperta && (
+        <button
+          type="button"
+          aria-label="Chiudi filtri"
+          className="absolute inset-0 z-20 bg-slate-950/35 sm:hidden"
+          onClick={() => setSidebarAperta(false)}
+        />
+      )}
+
       {/* ----------------------------------------------- barra laterale filtri */}
       <aside
-        className={`z-10 flex w-72 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white transition-all ${
-          sidebarAperta ? '' : '-ml-72'
+        className={`absolute inset-x-0 bottom-0 z-30 flex max-h-[78%] shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl transition-transform duration-200 sm:relative sm:inset-auto sm:z-10 sm:max-h-none sm:w-72 sm:rounded-none sm:border-r sm:border-t-0 sm:shadow-none ${
+          sidebarAperta
+            ? 'translate-y-0'
+            : 'translate-y-full sm:-ml-72 sm:translate-y-0'
         }`}
       >
-        <div className="space-y-5 p-4">
+        <div className="relative border-b border-slate-100 px-4 pb-2 pt-3 sm:hidden">
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300" />
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-green-900">Filtri mappa</h2>
+              <p className="text-xs text-slate-500">{filtrati.length} alberi visualizzati</p>
+            </div>
+            <button
+              type="button"
+              className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600"
+              onClick={() => setSidebarAperta(false)}
+            >
+              Chiudi
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-5 overflow-y-auto p-4">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
               Quadro generale
@@ -176,11 +212,13 @@ export default function MapPage() {
 
       <button
         onClick={() => setSidebarAperta(!sidebarAperta)}
-        className="absolute left-0 top-3 z-10 rounded-r-lg border border-l-0 border-slate-300 bg-white px-2 py-3 text-sm shadow-md"
-        style={{ left: sidebarAperta ? '18rem' : 0 }}
+        className={`absolute left-3 top-3 z-10 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-lg sm:left-0 sm:rounded-l-none ${
+          sidebarAperta ? 'hidden sm:block' : ''
+        }`}
+        style={{ left: sidebarAperta ? '18rem' : undefined }}
         title={sidebarAperta ? 'Nascondi filtri' : 'Mostra filtri'}
       >
-        {sidebarAperta ? '◀' : '▶ Filtri'}
+        {sidebarAperta ? '◀' : `Filtri · ${filtrati.length}`}
       </button>
 
       {/* ------------------------------------------------------------- mappa */}
