@@ -847,11 +847,13 @@ export default function SurveyPage() {
               </div>
               <p className="text-xs text-slate-500">
                 Consigliate: panoramica intera, colletto, particolare dei difetti rilevati.
-                Le immagini vengono compresse automaticamente sul dispositivo.
+                Suggerimento: scatta con la fotocamera nativa e scegli "Libreria foto" — gli
+                originali in alta risoluzione restano nel Rullino, l'app archivia la copia
+                compressa per mappe e schede.
               </p>
               <label className="btn-secondary w-full cursor-pointer">
                 📷 Scatta / carica foto
-                <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={aggiungiFoto} />
+                <input type="file" accept="image/*" multiple className="hidden" onChange={aggiungiFoto} />
               </label>
               <div className="flex flex-wrap gap-2">
                 {r.url_foto?.map((u) => (
