@@ -121,12 +121,22 @@ export default function PublicMapPage() {
             Rilievi VTA: Dott. Agr. Ruggero Manca
           </p>
         </div>
-        <button
-          onClick={() => setFiltriAperti((v) => !v)}
-          className="ml-auto rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium hover:bg-green-600 sm:hidden"
-        >
-          {filtriAperti ? 'Nascondi filtri' : 'Filtri'}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setFiltriAperti((v) => !v)}
+            className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium hover:bg-green-600 sm:hidden"
+          >
+            {filtriAperti ? 'Nascondi filtri' : 'Filtri'}
+          </button>
+          {/* accesso area riservata: evita il vicolo cieco se l'admin apre il link pubblico */}
+          <a
+            href="#/login"
+            title="Area riservata (solo amministratore)"
+            className="rounded-lg bg-green-900/60 px-2.5 py-1.5 text-xs hover:bg-green-900"
+          >
+            🔑
+          </a>
+        </div>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
