@@ -25,7 +25,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-green-900 to-green-700 p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-green-900 to-green-700 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="mb-6 text-center">
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="GreenCure VTA" className="mx-auto mb-3 h-16 w-16" />

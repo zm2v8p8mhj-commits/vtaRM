@@ -12,7 +12,7 @@ function Protetta({ children }) {
   const { utente, autenticando } = useApp()
   if (autenticando) {
     return (
-      <div className="flex h-screen items-center justify-center text-slate-500">
+      <div className="flex h-dvh items-center justify-center text-slate-500">
         Caricamento…
       </div>
     )
