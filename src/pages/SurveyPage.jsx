@@ -22,6 +22,7 @@ function recordVuoto() {
     lat: null,
     lng: null,
     localizzazione: '',
+    indirizzo: '',
     rilevatore: RILEVATORE_DEFAULT,
     specie_botanica: '',
     altezza_m: '',
@@ -69,6 +70,8 @@ export default function SurveyPage() {
   const miniMapEl = useRef(null)
   const miniMarkerRef = useRef(null) // punto blu: ultima lettura GPS
   const accCircleRef = useRef(null) // cerchio di accuratezza GPS
+  const [indirizzoStato, setIndirizzoStato] = useState('inattivo')
+  const autoIndRef = useRef(false)
   const programmaticRef = useRef(false) // distingue i movimenti mappa nostri da quelli dell'utente
 
   const set = (campo, valore) => setR((prev) => ({ ...prev, [campo]: valore }))
@@ -233,6 +236,37 @@ export default function SurveyPage() {
       map.setView([lat, lng], map.getZoom())
     }
   }, [gps])
+
+  // ------------------------------------------------ indirizzo via/piazza
+  // Reverse geocoding con Nominatim (OpenStreetMap): dalle coordinate ricava
+  // il nome della via o piazza. Best-effort: offline o senza esito resta
+  // modificabile a mano. Non sovrascrive un indirizzo già digitato.
+  const rilevaIndirizzo = async () => {
+    if (r.lat == null) return
+    setIndirizzoStato('caricamento')
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${r.lat}&lon=${r.lng}&zoom=18&addressdetails=1&accept-language=it`
+      )
+      const j = await res.json()
+      const ad = j.address || {}
+      const via = ad.road || ad.pedestrian || ad.footway || ad.square ||
+        ad.neighbourhood || ad.suburb || ad.hamlet || ''
+      const civico = ad.house_number ? ` ${ad.house_number}` : ''
+      const testo = via ? `${via}${civico}` : (j.display_name?.split(',')[0] || '')
+      if (testo) set('indirizzo', testo)
+      setIndirizzoStato(testo ? 'ok' : 'errore')
+    } catch {
+      setIndirizzoStato('errore')
+    }
+  }
+
+  useEffect(() => {
+    if (r.lat != null && !autoIndRef.current && !r.indirizzo && navigator.onLine) {
+      autoIndRef.current = true
+      rilevaIndirizzo()
+    }
+  }, [r.lat]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // riporta mirino e posizione sull'ultima lettura GPS
   const tornaAlGps = () => {
@@ -428,7 +462,7 @@ export default function SurveyPage() {
             {r.codice} – {r.specie_botanica} · <CpcBadge cpc={r.cpc} esteso />
           </p>
           <div className="mt-5 flex justify-center gap-3">
-            <button className="btn-primary" onClick={() => { setR({ ...recordVuoto(), comune_id: r.comune_id }); setNuoveFoto([]); setNumFotoLocali(0); setAltroLoc(''); setAltroBersaglio(''); setPasso(0); setSalvato(false); setGps({ stato: 'inattivo', accuratezza: null }) }}>
+            <button className="btn-primary" onClick={() => { setR({ ...recordVuoto(), comune_id: r.comune_id }); setNuoveFoto([]); setNumFotoLocali(0); setAltroLoc(''); setAltroBersaglio(''); autoIndRef.current = false; setIndirizzoStato('inattivo'); setPasso(0); setSalvato(false); setGps({ stato: 'inattivo', accuratezza: null }) }}>
               🌳 Nuovo rilievo
             </button>
             <button className="btn-secondary" onClick={() => navigate('/mappa')}>Vai alla mappa</button>
@@ -669,6 +703,34 @@ export default function SurveyPage() {
                       </button>
                     )}
                   </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">
+                      Indirizzo (via / piazza) <span className="font-normal text-slate-400">— rilevato automaticamente</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        className="field"
+                        value={r.indirizzo}
+                        onChange={(e) => set('indirizzo', e.target.value)}
+                        placeholder="es. Piazza Salandra"
+                      />
+                      <button
+                        type="button"
+                        className="btn-secondary shrink-0 !px-3"
+                        onClick={rilevaIndirizzo}
+                        title="Rileva l'indirizzo dalla posizione attuale del mirino"
+                      >
+                        📍
+                      </button>
+                    </div>
+                    {indirizzoStato === 'caricamento' && (
+                      <p className="mt-1 text-xs text-blue-600">Rilevamento indirizzo in corso…</p>
+                    )}
+                    {indirizzoStato === 'errore' && (
+                      <p className="mt-1 text-xs text-amber-600">Indirizzo non rilevato: scrivilo a mano.</p>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -869,6 +931,7 @@ export default function SurveyPage() {
             <div className="card space-y-1.5 text-sm">
               <Riga k="Comune" v={comuni.find((c) => c.id === r.comune_id)?.nome} />
               <Riga k="Localizzazione" v={localizzazioneFinale()} />
+              <Riga k="Indirizzo" v={r.indirizzo} />
               <Riga k="Posizione" v={`${r.lat?.toFixed(6)}, ${r.lng?.toFixed(6)}`} />
               <Riga k="Biometria" v={`H ${r.altezza_m} m · DBH ${r.dbh_cm} cm · chioma ${r.diametro_chioma_m} m · ${r.fase_sviluppo}`} />
               <Riga k="Bersagli" v={r.bersagli.length ? bersagliFinali().join(', ') : 'Nessuno'} />

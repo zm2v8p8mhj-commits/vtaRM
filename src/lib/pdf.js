@@ -95,6 +95,7 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   riga('Data rilievo', albero.data_rilievo ? new Date(albero.data_rilievo).toLocaleString('it-IT') : '—')
   riga('Coordinate GPS', `${albero.lat?.toFixed(6)}, ${albero.lng?.toFixed(6)} (WGS84)`)
   riga('Localizzazione', albero.localizzazione)
+  riga('Indirizzo', albero.indirizzo)
   riga('Rilevatore', albero.rilevatore)
 
   titoloSezione('2. Dati biometrici')

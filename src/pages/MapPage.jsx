@@ -227,6 +227,15 @@ export default function MapPage() {
         fotoDi={fotoDi}
         onModifica={(albero) => navigate(`/rilievo/${albero.id}`)}
       />
+
+      {/* pulsante + per avviare subito un nuovo rilievo (comodo su mobile) */}
+      <button
+        onClick={() => navigate('/rilievo')}
+        title="Nuovo rilievo"
+        className="absolute right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-3xl font-light text-white shadow-lg active:scale-95 sm:bottom-6"
+      >
+        +
+      </button>
     </div>
   )
 }

@@ -27,7 +27,7 @@ export default function TreeMap({ alberi, fotoDi, nomeComune = '', onModifica })
       layers: [osm],
       zoomControl: false,
     })
-    L.control.zoom({ position: 'bottomright' }).addTo(map)
+    L.control.zoom({ position: 'bottomleft' }).addTo(map)
     L.control.layers({ 'Mappa stradale': osm, Satellite: satellite }, null, {
       position: 'topright',
     }).addTo(map)
