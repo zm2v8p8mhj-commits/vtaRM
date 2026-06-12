@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { CPC_META } from './constants'
+import { gravitaLabel } from './cpc'
 
 // ----------------------------------------------------------------------------
 // Export Excel: foglio "Censimento" con una riga per esemplare e tutte le
@@ -30,14 +31,15 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'Bersagli': (a.bersagli || []).join('; '),
     'Frequenza occupazione': a.frequenza_occupazione || '',
     'Difetti radici': (a.radici?.difetti || []).join('; '),
-    'Gravità radici (1-5)': a.radici?.difetti?.length ? a.radici.gravita : '',
+    'Gravità radici': gravitaLabel(a.radici?.gravita || 0),
     'Difetti fusto': (a.fusto?.difetti || []).join('; '),
-    'Gravità fusto (1-5)': a.fusto?.difetti?.length ? a.fusto.gravita : '',
+    'Gravità fusto': gravitaLabel(a.fusto?.gravita || 0),
     'Difetti chioma': (a.chioma?.difetti || []).join('; '),
-    'Gravità chioma (1-5)': a.chioma?.difetti?.length ? a.chioma.gravita : '',
+    'Gravità chioma': gravitaLabel(a.chioma?.gravita || 0),
     'Note e osservazioni': a.note_osservazioni || '',
     'CPC': a.cpc || '',
     'CPC descrizione': CPC_META[a.cpc]?.label || '',
+    'Intervento emergenza': a.intervento_emergenza ? 'SÌ' : 'No',
     'Indagine strumentale': a.richiesta_indagine_strumentale ? 'Sì' : 'No',
     'Tipo indagine': a.richiesta_indagine_strumentale ? a.tipo_indagine_richiesta || '' : '',
     'Prossimo controllo': dataIT(a.data_prossimo_controllo),
@@ -50,7 +52,7 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
   // larghezze colonne proporzionate al contenuto tipico
   ws['!cols'] = [
     14, 24, 17, 22, 22, 11, 11, 30, 22, 10, 9, 15, 14, 28, 26,
-    34, 16, 34, 15, 34, 16, 40, 5, 22, 16, 16, 15, 36, 7, 50,
+    34, 16, 34, 15, 34, 16, 40, 5, 22, 12, 16, 16, 15, 36, 7, 50,
   ].map((wch) => ({ wch }))
 
   // -------- foglio riepilogo: conteggi per committente x classe CPC --------

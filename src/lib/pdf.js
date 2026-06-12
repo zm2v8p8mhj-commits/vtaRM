@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { CPC_META } from './constants'
-import { sintesiStato } from './cpc'
+import { sintesiStato, gravitaLabel } from './cpc'
 
 // ----------------------------------------------------------------------------
 // Scheda VTA in PDF generata "al volo" dal record dell'albero.
@@ -113,7 +113,7 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
     riga(
       nome,
       sez?.difetti?.length
-        ? `${sez.difetti.join(', ')} — gravità ${sez.gravita}/5`
+        ? `${sez.difetti.join(', ')} — gravità ${gravitaLabel(sez?.gravita || 0).toLowerCase()}`
         : 'Nessun difetto rilevato'
     )
   }

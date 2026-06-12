@@ -7,7 +7,7 @@ const CAMPI_PROPRIETA = [
   'id', 'codice', 'comune_id', 'comune_nome', 'data_rilievo', 'localizzazione',
   'rilevatore', 'specie_botanica', 'altezza_m', 'dbh_cm', 'diametro_chioma_m',
   'fase_sviluppo', 'bersagli', 'frequenza_occupazione', 'radici', 'fusto',
-  'chioma', 'note_osservazioni', 'cpc', 'richiesta_indagine_strumentale',
+  'chioma', 'note_osservazioni', 'cpc', 'intervento_emergenza', 'richiesta_indagine_strumentale',
   'tipo_indagine_richiesta', 'data_prossimo_controllo', 'prescrizioni_gestionali',
   'url_foto',
 ]

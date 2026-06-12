@@ -79,7 +79,7 @@ export default function PublicMapPage() {
   )
 
   const conteggi = useMemo(() => {
-    const c = { A: 0, B: 0, C: 0, D: 0 }
+    const c = { A: 0, B: 0, C: 0, 'C/D': 0, D: 0 }
     for (const a of alberi) if (c[a.cpc] != null) c[a.cpc]++
     return c
   }, [alberi])
@@ -176,11 +176,11 @@ export default function PublicMapPage() {
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
                 Quadro generale
               </h2>
-              <div className="mt-2 grid grid-cols-4 gap-1.5">
+              <div className="mt-2 grid grid-cols-5 gap-1">
                 {CPC_CLASSI.map((c) => (
-                  <div key={c} className="rounded-lg p-2 text-center" style={{ backgroundColor: CPC_META[c].bg }}>
-                    <div className="text-lg font-bold" style={{ color: CPC_META[c].color }}>{conteggi[c]}</div>
-                    <div className="text-[10px] font-semibold" style={{ color: CPC_META[c].color }}>Classe {c}</div>
+                  <div key={c} className="rounded-lg p-1.5 text-center" style={{ backgroundColor: CPC_META[c].bg }}>
+                    <div className="text-base font-bold leading-tight" style={{ color: CPC_META[c].color }}>{conteggi[c]}</div>
+                    <div className="text-[10px] font-bold leading-tight" style={{ color: CPC_META[c].color }}>{c}</div>
                   </div>
                 ))}
               </div>
@@ -203,8 +203,8 @@ export default function PublicMapPage() {
               </div>
               <div className="mt-2 flex gap-2">
                 <button className="text-xs font-semibold text-red-700 underline"
-                  onClick={() => setFiltri((f) => ({ ...f, cpc: ['C', 'D'] }))}>
-                  Solo priorità (C+D)
+                  onClick={() => setFiltri((f) => ({ ...f, cpc: ['C', 'C/D', 'D'] }))}>
+                  Solo priorità
                 </button>
                 <button className="text-xs text-slate-500 underline"
                   onClick={() => setFiltri({ cpc: [...CPC_CLASSI], specie: '', ricerca: '' })}>

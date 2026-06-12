@@ -1,26 +1,31 @@
-import { CPC_META } from './constants'
+import { CPC_META, GRAVITA } from './constants'
 
 // ----------------------------------------------------------------------------
-// La CPC (Classe di Propensione al Cedimento) dipende dai DIFETTI dell'albero,
-// non dai bersagli: questi ultimi entrano nella valutazione del rischio, non
-// della propensione. L'app quindi SUGGERISCE una classe in base alla gravità
-// massima rilevata, ma la decisione finale resta al valutatore.
+// VTA Livello 1 (triage visuale speditivo). La CPC dipende dai DIFETTI
+// dell'albero (i bersagli entrano nel rischio, non nella propensione) e si
+// determina con la regola del "valore peggiore": si prende la gravità massima
+// tra i tre distretti anatomici (radici, fusto, chioma) e la si traduce nella
+// classe corrispondente. La decisione finale resta al valutatore.
 // ----------------------------------------------------------------------------
 
+// gravità qualitativa per distretto, indipendente dalla spunta dei difetti:
+// nel triage speditivo si valuta la gravità complessiva del distretto.
 export function gravitaMassima(record) {
   return Math.max(
-    record.radici?.difetti?.length ? record.radici.gravita || 0 : 0,
-    record.fusto?.difetti?.length ? record.fusto.gravita || 0 : 0,
-    record.chioma?.difetti?.length ? record.chioma.gravita || 0 : 0,
+    record.radici?.gravita || 0,
+    record.fusto?.gravita || 0,
+    record.chioma?.gravita || 0,
   )
 }
 
+export function gravitaLabel(v) {
+  return GRAVITA[v]?.label || 'Assente'
+}
+
 export function suggerisciCPC(record) {
-  const g = gravitaMassima(record)
-  if (g >= 4) return 'D'
-  if (g === 3) return 'C'
-  if (g === 2) return 'B'
-  return 'A'
+  // override di emergenza: segni di cedimento imminente → forza Classe D
+  if (record.intervento_emergenza) return 'D'
+  return GRAVITA[gravitaMassima(record)]?.cpc || 'A'
 }
 
 export function dataProssimoControllo(cpc, daData = new Date()) {
@@ -51,10 +56,13 @@ export function sintesiStato(record) {
     ['fusto', record.fusto],
     ['chioma', record.chioma],
   ]) {
+    const grav = sezione?.gravita || 0
     if (sezione?.difetti?.length) {
-      parti.push(`${nome}: ${sezione.difetti.join(', ').toLowerCase()} (gravità ${sezione.gravita}/5)`)
+      parti.push(`${nome}: ${sezione.difetti.join(', ').toLowerCase()} (${gravitaLabel(grav).toLowerCase()})`)
+    } else if (grav > 0) {
+      parti.push(`${nome}: difetto ${gravitaLabel(grav).toLowerCase()}`)
     }
   }
-  if (!parti.length) return 'Nessun difetto significativo rilevato.'
-  return 'Difetti su ' + parti.join('; ') + '.'
+  const testo = parti.length ? 'Difetti su ' + parti.join('; ') + '.' : 'Nessun difetto significativo rilevato.'
+  return record.intervento_emergenza ? 'INTERVENTO DI EMERGENZA SEGNALATO. ' + testo : testo
 }

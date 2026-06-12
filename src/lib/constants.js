@@ -2,14 +2,27 @@
 // Modello dati "Master" – vocabolari controllati per il rilievo VTA
 // ============================================================================
 
+// Classi di Propensione al Cedimento – protocollo S.I.A. (A, B, C, C/D, D).
 export const CPC_META = {
   A: { label: 'A – Trascurabile', breve: 'Trascurabile', color: '#16a34a', bg: '#dcfce7', mesiControllo: 24 },
   B: { label: 'B – Bassa', breve: 'Bassa', color: '#ca8a04', bg: '#fef9c3', mesiControllo: 12 },
-  C: { label: 'C – Moderata', breve: 'Moderata', color: '#ea580c', bg: '#ffedd5', mesiControllo: 6 },
-  D: { label: 'D – Elevata/Estrema', breve: 'Elevata', color: '#dc2626', bg: '#fee2e2', mesiControllo: 2 },
+  C: { label: 'C – Moderata', breve: 'Moderata', color: '#f97316', bg: '#ffedd5', mesiControllo: 6 },
+  'C/D': { label: 'C/D – Elevata', breve: 'Elevata', color: '#ea580c', bg: '#fed7aa', mesiControllo: 3 },
+  D: { label: 'D – Estrema', breve: 'Estrema', color: '#dc2626', bg: '#fee2e2', mesiControllo: 2 },
 }
 
-export const CPC_CLASSI = ['A', 'B', 'C', 'D']
+export const CPC_CLASSI = ['A', 'B', 'C', 'C/D', 'D']
+
+// VTA Livello 1 (visuale speditiva): gravità qualitativa per distretto
+// anatomico. Il valore (0-4) determina la CPC con la regola del "valore
+// peggiore" (MAX); ogni livello anticipa la classe che produce.
+export const GRAVITA = [
+  { v: 0, label: 'Assente', cpc: 'A' },
+  { v: 1, label: 'Lieve', cpc: 'B' },
+  { v: 2, label: 'Significativo', cpc: 'C' },
+  { v: 3, label: 'Grave', cpc: 'C/D' },
+  { v: 4, label: 'Estremo', cpc: 'D' },
+]
 
 export const SPECIE = [
   'Pinus pinea', 'Pinus halepensis', 'Quercus ilex', 'Quercus pubescens',

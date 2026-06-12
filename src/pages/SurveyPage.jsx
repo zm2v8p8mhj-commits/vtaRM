@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext'
 import {
   BERSAGLI, CPC_CLASSI, CPC_META, DIFETTI_CHIOMA, DIFETTI_FUSTO, DIFETTI_RADICI,
   FASI_SVILUPPO, FREQUENZE, LOCALIZZAZIONI, PRESCRIZIONI_SUGGERITE,
-  RILEVATORE_DEFAULT, SPECIE, TIPI_INDAGINE,
+  RILEVATORE_DEFAULT, SPECIE, TIPI_INDAGINE, GRAVITA,
 } from '../lib/constants'
 import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC } from '../lib/cpc'
 import { getFotoByAlbero } from '../lib/db'
@@ -38,6 +38,7 @@ function recordVuoto() {
     richiesta_indagine_strumentale: false,
     tipo_indagine_richiesta: 'Nessuna',
     data_prossimo_controllo: '',
+    intervento_emergenza: false,
     prescrizioni_gestionali: '',
     url_foto: [],
   }
@@ -296,11 +297,6 @@ export default function SurveyPage() {
       if (r.bersagli.includes('Altro') && !altroBersaglio.trim())
         e.push('Specifica il bersaglio nella casella "Altro"')
     }
-    if (n === 3) {
-      for (const [nome, sez] of [['radici', r.radici], ['fusto', r.fusto], ['chioma', r.chioma]]) {
-        if (sez.difetti.length && !sez.gravita) e.push(`Indica la gravità dei difetti: ${nome}`)
-      }
-    }
     if (n === 4) {
       if (!r.cpc) e.push('Assegna la classe CPC')
       if (!r.prescrizioni_gestionali) e.push('Indica le prescrizioni gestionali')
@@ -316,7 +312,7 @@ export default function SurveyPage() {
     // entrando in Sintesi: precompila CPC suggerita, codice e prossimo controllo
     if (passo === 3) {
       setR((prev) => {
-        const cpc = prev.cpc || suggerisciCPC(prev)
+        const cpc = prev.intervento_emergenza ? 'D' : (prev.cpc || suggerisciCPC(prev))
         const comune = comuni.find((c) => c.id === prev.comune_id)
         return {
           ...prev,
@@ -355,40 +351,47 @@ export default function SurveyPage() {
         difetti: sez.difetti.includes(d) ? sez.difetti.filter((x) => x !== d) : [...sez.difetti, d],
       })
     return (
-      <div className="card">
-        <h3 className="mb-2 font-bold text-green-900">{titolo}</h3>
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          {opzioni.map((d) => (
-            <label key={d} className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-green-700"
-                checked={sez.difetti.includes(d)}
-                onChange={() => toggle(d)}
-              />
-              {d}
-            </label>
-          ))}
-        </div>
-        {sez.difetti.length > 0 && (
-          <div className="mt-3">
-            <label className="text-sm font-medium">Gravità complessiva (1–5)</label>
-            <div className="mt-1 flex gap-2">
-              {[1, 2, 3, 4, 5].map((g) => (
+      <div className="card space-y-3">
+        <h3 className="font-bold text-green-900">{titolo}</h3>
+        <div>
+          <label className="text-sm font-medium">Gravità del difetto (valutazione speditiva)</label>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {GRAVITA.map((g) => {
+              const attivo = (sez.gravita || 0) === g.v
+              return (
                 <button
-                  key={g}
+                  key={g.v}
                   type="button"
-                  onClick={() => set(campo, { ...sez, gravita: g })}
-                  className={`h-9 w-9 rounded-full text-sm font-bold ${
-                    sez.gravita === g ? 'bg-green-700 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}
+                  onClick={() => set(campo, { ...sez, gravita: g.v })}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
+                  style={{
+                    backgroundColor: attivo ? CPC_META[g.cpc].color : '#f1f5f9',
+                    color: attivo ? '#ffffff' : '#475569',
+                  }}
+                  title={`→ Classe ${g.cpc}`}
                 >
-                  {g}
+                  {g.label}
                 </button>
-              ))}
-            </div>
+              )
+            })}
           </div>
-        )}
+        </div>
+        <div>
+          <label className="text-sm font-medium">Difetti rilevati (dettaglio)</label>
+          <div className="mt-1 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {opzioni.map((d) => (
+              <label key={d} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-green-700"
+                  checked={sez.difetti.includes(d)}
+                  onChange={() => toggle(d)}
+                />
+                {d}
+              </label>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -738,6 +741,18 @@ export default function SurveyPage() {
             <SezioneDifetti campo="radici" titolo="Radici e colletto" opzioni={DIFETTI_RADICI} />
             <SezioneDifetti campo="fusto" titolo="Fusto" opzioni={DIFETTI_FUSTO} />
             <SezioneDifetti campo="chioma" titolo="Chioma e branche" opzioni={DIFETTI_CHIOMA} />
+            <div className="card border-2 border-red-200 bg-red-50/50">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input type="checkbox" className="mt-0.5 h-5 w-5 accent-red-600"
+                  checked={r.intervento_emergenza}
+                  onChange={(e) => set('intervento_emergenza', e.target.checked)} />
+                <span className="text-sm">
+                  <strong className="text-red-700">Intervento di emergenza</strong> — segni gravissimi di
+                  cedimento imminente (albero morto, grande cavità aperta, ribaltamento della zolla in atto…).
+                  Forza la <strong>Classe D</strong> e segnala messa in sicurezza o abbattimento immediato.
+                </span>
+              </label>
+            </div>
             <div className="card">
               <label className="mb-1 block font-bold text-green-900">Note e osservazioni</label>
               <textarea className="field" rows="3" value={r.note_osservazioni} onChange={(e) => set('note_osservazioni', e.target.value)} placeholder="Osservazioni libere sul soggetto…" />
@@ -753,21 +768,27 @@ export default function SurveyPage() {
                 <h3 className="font-bold text-green-900">Classe di Propensione al Cedimento *</h3>
                 <span className="text-xs text-slate-500">Suggerita: <CpcBadge cpc={cpcSuggerita} /></span>
               </div>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-1.5">
                 {CPC_CLASSI.map((c) => (
                   <button key={c} type="button" onClick={() => { set('cpc', c); set('data_prossimo_controllo', dataProssimoControllo(c, new Date(r.data_rilievo))) }}
-                    className="rounded-xl border-2 p-3 text-center transition"
+                    className="rounded-xl border-2 p-2 text-center transition"
                     style={{
                       borderColor: r.cpc === c ? CPC_META[c].color : '#e2e8f0',
                       backgroundColor: r.cpc === c ? CPC_META[c].bg : 'white',
                     }}>
-                    <div className="text-xl font-black" style={{ color: CPC_META[c].color }}>{c}</div>
-                    <div className="text-[10px] font-semibold text-slate-500">{CPC_META[c].breve}</div>
+                    <div className="text-base font-black leading-tight" style={{ color: CPC_META[c].color }}>{c}</div>
+                    <div className="text-[9px] font-semibold leading-tight text-slate-500">{CPC_META[c].breve}</div>
                   </button>
                 ))}
               </div>
+              {r.intervento_emergenza && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                  🚨 Override di emergenza attivo: classe forzata a D.
+                </p>
+              )}
               <p className="text-xs text-slate-400">
-                La classe suggerita deriva dalla gravità massima dei difetti; la decisione finale spetta al valutatore.
+                Regola del valore peggiore (VTA Livello 1): la classe suggerita deriva dalla gravità massima
+                tra i tre distretti. La decisione finale spetta al valutatore.
               </p>
             </div>
 
@@ -815,9 +836,9 @@ export default function SurveyPage() {
                     {r.codice} · <em>{r.specie_botanica}</em>
                   </div>
                 </div>
-                <div className="text-5xl">{r.cpc === 'D' ? '⚠️' : r.cpc === 'C' ? '🔶' : '🌳'}</div>
+                <div className="text-5xl">{r.cpc === 'D' || r.cpc === 'C/D' ? '⚠️' : r.cpc === 'C' ? '🔶' : '🌳'}</div>
               </div>
-              {(r.cpc === 'C' || r.cpc === 'D') && (
+              {['C', 'C/D', 'D'].includes(r.cpc) && (
                 <p className="mt-2 rounded-lg bg-white/70 px-3 py-2 text-sm font-bold text-red-800">
                   🚨 INTERVENTO PRIORITARIO: {r.prescrizioni_gestionali}
                 </p>
