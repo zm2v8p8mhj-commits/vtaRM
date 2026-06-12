@@ -92,6 +92,12 @@ export default function SurveyPage() {
       }
       return b
     })
+    for (const k of ['radici', 'fusto', 'chioma']) {
+      const sez = caricato[k]
+      if (sez?.difetti?.length && typeof sez.difetti[0] === 'string') {
+        caricato[k] = { difetti: sez.difetti.map((nome) => ({ nome, gravita: sez.gravita || 1 })) }
+      }
+    }
     setR(caricato)
   }, [id, alberi])
 
@@ -345,52 +351,68 @@ export default function SurveyPage() {
   // ------------------------------------------------------- sezione difetti
   const SezioneDifetti = ({ campo, titolo, opzioni }) => {
     const sez = r[campo]
-    const toggle = (d) =>
+    const difetti = sez.difetti || []
+    const trova = (nome) => difetti.find((d) => (d.nome ?? d) === nome)
+    const toggle = (nome) => {
+      const presente = trova(nome)
       set(campo, {
         ...sez,
-        difetti: sez.difetti.includes(d) ? sez.difetti.filter((x) => x !== d) : [...sez.difetti, d],
+        difetti: presente
+          ? difetti.filter((d) => (d.nome ?? d) !== nome)
+          : [...difetti, { nome, gravita: 1 }],
+      })
+    }
+    const setGrav = (nome, g) =>
+      set(campo, {
+        ...sez,
+        difetti: difetti.map((d) => ((d.nome ?? d) === nome ? { nome, gravita: g } : d)),
       })
     return (
-      <div className="card space-y-3">
+      <div className="card space-y-2">
         <h3 className="font-bold text-green-900">{titolo}</h3>
-        <div>
-          <label className="text-sm font-medium">Gravità del difetto (valutazione speditiva)</label>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {GRAVITA.map((g) => {
-              const attivo = (sez.gravita || 0) === g.v
-              return (
-                <button
-                  key={g.v}
-                  type="button"
-                  onClick={() => set(campo, { ...sez, gravita: g.v })}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
-                  style={{
-                    backgroundColor: attivo ? CPC_META[g.cpc].color : '#f1f5f9',
-                    color: attivo ? '#ffffff' : '#475569',
-                  }}
-                  title={`→ Classe ${g.cpc}`}
-                >
-                  {g.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <div>
-          <label className="text-sm font-medium">Difetti rilevati (dettaglio)</label>
-          <div className="mt-1 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-            {opzioni.map((d) => (
-              <label key={d} className="flex cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-green-700"
-                  checked={sez.difetti.includes(d)}
-                  onChange={() => toggle(d)}
-                />
-                {d}
-              </label>
-            ))}
-          </div>
+        <p className="text-xs text-slate-500">
+          Spunta i difetti presenti e assegna a ciascuno la gravità.
+        </p>
+        <div className="space-y-1.5">
+          {opzioni.map((nome) => {
+            const sel = trova(nome)
+            return (
+              <div key={nome} className={`rounded-lg border p-2 ${sel ? 'border-slate-300 bg-slate-50' : 'border-slate-200'}`}>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-green-700"
+                    checked={!!sel}
+                    onChange={() => toggle(nome)}
+                  />
+                  {nome}
+                </label>
+                {sel && (
+                  <div className="mt-1.5 flex flex-wrap gap-1 pl-6">
+                    {GRAVITA.filter((g) => g.v > 0).map((g) => {
+                      const attivo = (sel.gravita || 1) === g.v
+                      return (
+                        <button
+                          key={g.v}
+                          type="button"
+                          onClick={() => setGrav(nome, g.v)}
+                          className="rounded-full px-2.5 py-1 text-[11px] font-semibold transition"
+                          style={{
+                            backgroundColor: attivo ? CPC_META[g.cpc].color : '#ffffff',
+                            color: attivo ? '#ffffff' : '#475569',
+                            border: attivo ? 'none' : '1px solid #cbd5e1',
+                          }}
+                          title={`→ Classe ${g.cpc}`}
+                        >
+                          {g.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     )

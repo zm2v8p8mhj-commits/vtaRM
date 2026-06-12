@@ -8,13 +8,27 @@ import { CPC_META, GRAVITA } from './constants'
 // classe corrispondente. La decisione finale resta al valutatore.
 // ----------------------------------------------------------------------------
 
-// gravità qualitativa per distretto, indipendente dalla spunta dei difetti:
-// nel triage speditivo si valuta la gravità complessiva del distretto.
+// Normalizza i difetti di un distretto in [{ nome, gravita }]:
+// - formato nuovo: già oggetti { nome, gravita }
+// - formato vecchio: stringhe, a cui si applica la gravità del distretto
+export function normalizzaDifetti(sezione) {
+  if (!sezione?.difetti?.length) return []
+  return sezione.difetti.map((d) =>
+    typeof d === 'string' ? { nome: d, gravita: sezione.gravita || 1 } : d
+  )
+}
+
+// gravità massima di un distretto (massimo tra i suoi difetti)
+export function gravitaDistretto(sezione) {
+  return normalizzaDifetti(sezione).reduce((m, d) => Math.max(m, d.gravita || 0), 0)
+}
+
+// gravità massima dell'albero: il difetto più grave tra tutti i distretti
 export function gravitaMassima(record) {
   return Math.max(
-    record.radici?.gravita || 0,
-    record.fusto?.gravita || 0,
-    record.chioma?.gravita || 0,
+    gravitaDistretto(record.radici),
+    gravitaDistretto(record.fusto),
+    gravitaDistretto(record.chioma),
   )
 }
 
@@ -56,11 +70,12 @@ export function sintesiStato(record) {
     ['fusto', record.fusto],
     ['chioma', record.chioma],
   ]) {
-    const grav = sezione?.gravita || 0
-    if (sezione?.difetti?.length) {
-      parti.push(`${nome}: ${sezione.difetti.join(', ').toLowerCase()} (${gravitaLabel(grav).toLowerCase()})`)
-    } else if (grav > 0) {
-      parti.push(`${nome}: difetto ${gravitaLabel(grav).toLowerCase()}`)
+    const ds = normalizzaDifetti(sezione)
+    if (ds.length) {
+      parti.push(
+        `${nome}: ` +
+          ds.map((d) => `${d.nome.toLowerCase()} (${gravitaLabel(d.gravita).toLowerCase()})`).join(', ')
+      )
     }
   }
   const testo = parti.length ? 'Difetti su ' + parti.join('; ') + '.' : 'Nessun difetto significativo rilevato.'

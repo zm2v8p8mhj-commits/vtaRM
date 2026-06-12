@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx'
 import { CPC_META } from './constants'
-import { gravitaLabel } from './cpc'
+import { gravitaLabel, normalizzaDifetti, gravitaDistretto } from './cpc'
 
 // ----------------------------------------------------------------------------
 // Export Excel: foglio "Censimento" con una riga per esemplare e tutte le
@@ -30,12 +30,12 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'Fase di sviluppo': a.fase_sviluppo || '',
     'Bersagli': (a.bersagli || []).join('; '),
     'Frequenza occupazione': a.frequenza_occupazione || '',
-    'Difetti radici': (a.radici?.difetti || []).join('; '),
-    'Gravità radici': gravitaLabel(a.radici?.gravita || 0),
-    'Difetti fusto': (a.fusto?.difetti || []).join('; '),
-    'Gravità fusto': gravitaLabel(a.fusto?.gravita || 0),
-    'Difetti chioma': (a.chioma?.difetti || []).join('; '),
-    'Gravità chioma': gravitaLabel(a.chioma?.gravita || 0),
+    'Difetti radici': normalizzaDifetti(a.radici).map((d) => `${d.nome} (${gravitaLabel(d.gravita)})`).join('; '),
+    'Gravità max radici': gravitaLabel(gravitaDistretto(a.radici)),
+    'Difetti fusto': normalizzaDifetti(a.fusto).map((d) => `${d.nome} (${gravitaLabel(d.gravita)})`).join('; '),
+    'Gravità max fusto': gravitaLabel(gravitaDistretto(a.fusto)),
+    'Difetti chioma': normalizzaDifetti(a.chioma).map((d) => `${d.nome} (${gravitaLabel(d.gravita)})`).join('; '),
+    'Gravità max chioma': gravitaLabel(gravitaDistretto(a.chioma)),
     'Note e osservazioni': a.note_osservazioni || '',
     'CPC': a.cpc || '',
     'CPC descrizione': CPC_META[a.cpc]?.label || '',
