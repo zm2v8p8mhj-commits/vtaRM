@@ -2,6 +2,12 @@ import { jsPDF } from 'jspdf'
 import { CPC_META } from './constants'
 import { sintesiStato, gravitaLabel, normalizzaDifetti } from './cpc'
 
+// distretti mostrati nella scheda PDF (6 nuovi + "radici" dei record vecchi)
+const DISTRETTI_PDF = [
+  ['Zolla radicale', 'zolla'], ['Radici (storico)', 'radici'], ['Colletto', 'colletto'],
+  ['Fusto', 'fusto'], ['Castello', 'castello'], ['Branche e rami', 'branche'], ['Chioma', 'chioma'],
+]
+
 // ----------------------------------------------------------------------------
 // Scheda VTA in PDF generata "al volo" dal record dell'albero.
 // ----------------------------------------------------------------------------
@@ -102,30 +108,46 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   riga('Specie botanica', albero.specie_botanica)
   riga('Altezza', albero.altezza_m != null ? `${albero.altezza_m} m` : '—')
   riga('Diametro fusto (DBH)', albero.dbh_cm != null ? `${albero.dbh_cm} cm` : '—')
+  if (albero.circonferenza_cm != null) riga('Circonferenza', `${albero.circonferenza_cm} cm`)
   riga('Diametro chioma', albero.diametro_chioma_m != null ? `${albero.diametro_chioma_m} m` : '—')
+  if (albero.altezza_bersaglio_m != null) riga('Altezza bersaglio', `${albero.altezza_bersaglio_m} m`)
   riga('Fase di sviluppo', albero.fase_sviluppo)
+  if (albero.vigoria) riga('Vigoria', albero.vigoria)
+  if (albero.fitopatie) riga('Fitopatie', albero.fitopatie)
+  if (albero.agente_cariogeno) riga('Agente cariogeno', albero.agente_cariogeno)
 
   titoloSezione('3. Contesto e bersagli')
   riga('Bersagli presenti', albero.bersagli?.length ? albero.bersagli.join(', ') : 'Nessuno')
   riga('Frequenza occupazione', albero.frequenza_occupazione)
+  if (albero.conflitti?.length) riga('Conflitti', albero.conflitti.join(', '))
+  if (albero.coerenza_fitoclimatica) riga('Coerenza fito-climatica', albero.coerenza_fitoclimatica)
+  if (albero.dimora) riga('Dimora', albero.dimora)
+  if (albero.vincoli) riga('Vincoli / valore', albero.vincoli)
 
   titoloSezione('4. Analisi dei difetti')
-  for (const [nome, sez] of [['Radici', albero.radici], ['Fusto', albero.fusto], ['Chioma', albero.chioma]]) {
-    riga(
-      nome,
-      normalizzaDifetti(sez).length
-        ? normalizzaDifetti(sez).map((d) => `${d.nome} (${gravitaLabel(d.gravita).toLowerCase()})`).join('; ')
-        : 'Nessun difetto rilevato'
-    )
+  for (const [nome, sez] of DISTRETTI_PDF) {
+    const ds = normalizzaDifetti(albero[sez])
+    if (ds.length) riga(nome, ds.map((d) => `${d.nome} (${gravitaLabel(d.gravita).toLowerCase()})`).join('; '))
   }
   if (albero.note_osservazioni) riga('Note', albero.note_osservazioni)
   riga('Sintesi stato', sintesiStato(albero))
 
   titoloSezione('5. Sintesi tecnica e gestione')
   riga('Classe CPC', meta.label)
-  riga('Indagine strumentale', albero.richiesta_indagine_strumentale ? `Sì – ${albero.tipo_indagine_richiesta || ''}` : 'No')
+  if (albero.classe_rischio) riga('Classe di rischio', albero.classe_rischio)
+  riga('Indagine strumentale', albero.richiesta_indagine_strumentale
+    ? `Sì – ${albero.tipo_indagine_richiesta || ''}${albero.urgenza_indagine ? ` (${albero.urgenza_indagine})` : ''}` : 'No')
   riga('Prossimo controllo', albero.data_prossimo_controllo ? new Date(albero.data_prossimo_controllo).toLocaleDateString('it-IT') : '—')
-  riga('Prescrizioni', albero.prescrizioni_gestionali)
+  riga('Interventi colturali', albero.prescrizioni_gestionali
+    ? `${albero.prescrizioni_gestionali}${albero.urgenza_intervento ? ` (${albero.urgenza_intervento})` : ''}` : '—')
+  if (albero.mitigazione_bersaglio) riga('Mitigazione bersaglio',
+    `${albero.mitigazione_bersaglio}${albero.urgenza_mitigazione ? ` (${albero.urgenza_mitigazione})` : ''}`)
+  if (albero.co2_kg_anno != null || albero.valore_economico_eur != null) {
+    riga('Valori', [
+      albero.co2_kg_anno != null ? `CO₂ ${albero.co2_kg_anno} kg/anno` : null,
+      albero.valore_economico_eur != null ? `valore € ${albero.valore_economico_eur}` : null,
+    ].filter(Boolean).join(' · '))
+  }
 
   // Foto in coda alla scheda
   const dataUrls = (await Promise.all(fotoUrls.slice(0, 4).map(urlToDataURL))).filter(Boolean)

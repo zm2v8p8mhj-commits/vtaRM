@@ -5,10 +5,16 @@
 
 const CAMPI_PROPRIETA = [
   'id', 'codice', 'comune_id', 'comune_nome', 'data_rilievo', 'localizzazione',
-  'indirizzo', 'rilevatore', 'specie_botanica', 'altezza_m', 'dbh_cm', 'diametro_chioma_m',
-  'fase_sviluppo', 'bersagli', 'frequenza_occupazione', 'radici', 'fusto',
-  'chioma', 'note_osservazioni', 'cpc', 'intervento_emergenza', 'richiesta_indagine_strumentale',
-  'tipo_indagine_richiesta', 'data_prossimo_controllo', 'prescrizioni_gestionali',
+  'indirizzo', 'rilevatore', 'specie_botanica',
+  'altezza_m', 'dbh_cm', 'circonferenza_cm', 'diametro_chioma_m',
+  'diametro_branca_cm', 'lunghezza_branca_m', 'altezza_branca_m', 'altezza_bersaglio_m',
+  'fase_sviluppo', 'vigoria', 'fitopatie', 'agente_cariogeno',
+  'bersagli', 'frequenza_occupazione', 'conflitti', 'coerenza_fitoclimatica', 'dimora', 'vincoli',
+  'zolla', 'colletto', 'fusto', 'castello', 'branche', 'chioma', 'radici',
+  'note_osservazioni', 'cpc', 'classe_rischio', 'intervento_emergenza',
+  'richiesta_indagine_strumentale', 'tipo_indagine_richiesta', 'urgenza_indagine',
+  'data_prossimo_controllo', 'prescrizioni_gestionali', 'urgenza_intervento',
+  'mitigazione_bersaglio', 'urgenza_mitigazione', 'co2_kg_anno', 'valore_economico_eur',
   'url_foto',
 ]
 

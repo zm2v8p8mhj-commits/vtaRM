@@ -85,6 +85,77 @@ export const PRESCRIZIONI_SUGGERITE = [
   'Abbattimento',
 ]
 
+// ---------------------------------------------------------------------------
+// Modello esteso (sulla scorta delle schede VTA professionali di Liv. 2/3)
+// ---------------------------------------------------------------------------
+
+// 6 distretti anatomici valutati separatamente (la CPC resta sul valore peggiore
+// tra tutti i difetti di tutti i distretti). I record vecchi usano radici/fusto/
+// chioma: restano leggibili (vedi DISTRETTI_KEYS e normalizzaDifetti).
+export const DIFETTI_ZOLLA = [
+  'Area asfaltata / pavimentata', 'Cordoli / sottoservizi', 'Depressione / ristagno',
+  'Inclinazione / arcuatura della zolla', 'Sollevamento del terreno',
+  'Ribaltamento / scivolamento', 'Radici tagliate o danneggiate', 'Carpofori radicali',
+]
+export const DIFETTI_COLLETTO = [
+  'Colletto a imbuto', 'Colletto interrato', 'Marciume del colletto',
+  'Carpofori al colletto', 'Ferite / lesioni', 'Cavità al colletto',
+]
+export const DIFETTI_FUSTO6 = [
+  'Cavità', 'Carie / legno degradato', 'Legno disfunzionale', 'Fessurazioni / cretti',
+  'Corteccia inclusa', 'Carpofori', 'Cordoni xilematici', 'Ferite / lesioni corticali',
+  'Inclinazione anomala', 'Legno di reazione insufficiente', 'Cancri', 'Essudati',
+]
+export const DIFETTI_CASTELLO = [
+  'Corteccia inclusa nelle inserzioni', 'Branche codominanti', 'Inclinazione / arcuatura',
+  'Legno disfunzionale', "Cavità all'inserzione", 'Cordoni xilematici',
+]
+export const DIFETTI_BRANCHE = [
+  'Branche morte / secche', 'Monconi', 'Rami sinuosi / arcuati',
+  'Branche esposte / sovraestese', 'Rami patenti', 'Sbrancature / rotture', 'Cavità su branche',
+]
+export const DIFETTI_CHIOMA6 = [
+  'Chioma diradata', 'Seccume diffuso', 'Disseccamenti dei ramuli', 'Alterazione morfologica',
+  'Microfillia', 'Pericolante', 'Parassiti / fitofagi', 'Sbilanciamento della chioma',
+]
+
+export const DISTRETTI = [
+  { key: 'zolla', label: 'Zolla radicale', opzioni: DIFETTI_ZOLLA },
+  { key: 'colletto', label: 'Colletto', opzioni: DIFETTI_COLLETTO },
+  { key: 'fusto', label: 'Fusto', opzioni: DIFETTI_FUSTO6 },
+  { key: 'castello', label: 'Castello (inserzione branche)', opzioni: DIFETTI_CASTELLO },
+  { key: 'branche', label: 'Branche e rami', opzioni: DIFETTI_BRANCHE },
+  { key: 'chioma', label: 'Chioma', opzioni: DIFETTI_CHIOMA6 },
+]
+// tutte le chiavi-distretto possibili (incluse le vecchie) per CPC e sintesi
+export const DISTRETTI_KEYS = ['radici', 'zolla', 'colletto', 'fusto', 'castello', 'branche', 'chioma']
+
+// Salute e vigoria
+export const VIGORIA = ['Buona', 'Media', 'Scarsa', 'Deperimento']
+
+// Contesto e vincoli
+export const COERENZA_FITOCLIMATICA = ['A – Optimum', 'B – Idonea', 'C – Non idonea']
+export const DIMORA = ['Suolo pubblico', 'Suolo privato', 'Area scolastica', 'Area cimiteriale', 'Altro']
+export const CONFLITTI = [
+  'Marciapiedi', 'Pavimentazione / asfalto', 'Sottoservizi', 'Edifici',
+  'Cavi aerei', 'Segnaletica / arredo', 'Muri / recinzioni', 'Altro',
+]
+export const VINCOLI = [
+  'Nessuno', 'Albero monumentale (L. 10/2013)', 'Vincolo paesaggistico',
+  'Albero veterano', 'Altro',
+]
+
+// Prescrizioni con urgenza
+export const URGENZE = ['Subito', 'Entro 6 mesi', 'Al bisogno', 'Programmabile']
+
+// Modulo Rischio Liv.2: classe di rischio (propensione CPC × bersaglio)
+export const CLASSE_RISCHIO_META = {
+  Basso: { color: '#16a34a', bg: '#dcfce7', nota: 'Rischio accettabile' },
+  Moderato: { color: '#ca8a04', bg: '#fef9c3', nota: 'Rischio tollerabile – monitoraggio' },
+  Elevato: { color: '#ea580c', bg: '#fed7aa', nota: 'Tollerabile se ALARP – valutare costi/benefici' },
+  Estremo: { color: '#dc2626', bg: '#fee2e2', nota: 'Inaccettabile – intervento di riduzione' },
+}
+
 export const RILEVATORE_DEFAULT = 'Dott. Agr. Ruggero Manca'
 
 // Comuni demo (usati solo in modalità senza Supabase); share_token leggibili

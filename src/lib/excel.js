@@ -1,6 +1,21 @@
 import * as XLSX from 'xlsx'
-import { CPC_META } from './constants'
+import { CPC_META, DISTRETTI } from './constants'
 import { gravitaLabel, normalizzaDifetti, gravitaDistretto } from './cpc'
+
+// una coppia di colonne (difetti + gravità max) per ciascun distretto
+function difettiColonne(a) {
+  const out = {}
+  for (const d of DISTRETTI) {
+    const ds = normalizzaDifetti(a[d.key])
+    out[`Difetti ${d.label}`] = ds.map((x) => `${x.nome} (${gravitaLabel(x.gravita)})`).join('; ')
+    out[`Gravità max ${d.label}`] = ds.length ? gravitaLabel(gravitaDistretto(a[d.key])) : ''
+  }
+  const storico = normalizzaDifetti(a.radici)
+  if (storico.length) {
+    out['Difetti radici (storico)'] = storico.map((x) => `${x.nome} (${gravitaLabel(x.gravita)})`).join('; ')
+  }
+  return out
+}
 
 // ----------------------------------------------------------------------------
 // Export Excel: foglio "Censimento" con una riga per esemplare e tutte le
@@ -27,34 +42,43 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'Specie botanica': a.specie_botanica || '',
     'Altezza (m)': a.altezza_m ?? '',
     'DBH (cm)': a.dbh_cm ?? '',
+    'Circonferenza (cm)': a.circonferenza_cm ?? '',
     'Diametro chioma (m)': a.diametro_chioma_m ?? '',
+    'Ø branca (cm)': a.diametro_branca_cm ?? '',
+    'Lungh. branca (m)': a.lunghezza_branca_m ?? '',
+    'H branca (m)': a.altezza_branca_m ?? '',
+    'H bersaglio (m)': a.altezza_bersaglio_m ?? '',
     'Fase di sviluppo': a.fase_sviluppo || '',
+    'Vigoria': a.vigoria || '',
+    'Fitopatie': a.fitopatie || '',
+    'Agente cariogeno': a.agente_cariogeno || '',
     'Bersagli': (a.bersagli || []).join('; '),
     'Frequenza occupazione': a.frequenza_occupazione || '',
-    'Difetti radici': normalizzaDifetti(a.radici).map((d) => `${d.nome} (${gravitaLabel(d.gravita)})`).join('; '),
-    'Gravità max radici': gravitaLabel(gravitaDistretto(a.radici)),
-    'Difetti fusto': normalizzaDifetti(a.fusto).map((d) => `${d.nome} (${gravitaLabel(d.gravita)})`).join('; '),
-    'Gravità max fusto': gravitaLabel(gravitaDistretto(a.fusto)),
-    'Difetti chioma': normalizzaDifetti(a.chioma).map((d) => `${d.nome} (${gravitaLabel(d.gravita)})`).join('; '),
-    'Gravità max chioma': gravitaLabel(gravitaDistretto(a.chioma)),
+    'Conflitti': (a.conflitti || []).join('; '),
+    'Coerenza fito-climatica': a.coerenza_fitoclimatica || '',
+    'Dimora': a.dimora || '',
+    'Vincoli / valore': a.vincoli || '',
+    ...difettiColonne(a),
     'Note e osservazioni': a.note_osservazioni || '',
     'CPC': a.cpc || '',
     'CPC descrizione': CPC_META[a.cpc]?.label || '',
+    'Classe di rischio': a.classe_rischio || '',
     'Intervento emergenza': a.intervento_emergenza ? 'SÌ' : 'No',
     'Indagine strumentale': a.richiesta_indagine_strumentale ? 'Sì' : 'No',
     'Tipo indagine': a.richiesta_indagine_strumentale ? a.tipo_indagine_richiesta || '' : '',
+    'Urgenza indagine': a.urgenza_indagine || '',
     'Prossimo controllo': dataIT(a.data_prossimo_controllo),
-    'Prescrizioni gestionali': a.prescrizioni_gestionali || '',
+    'Interventi colturali': a.prescrizioni_gestionali || '',
+    'Urgenza interventi': a.urgenza_intervento || '',
+    'Mitigazione bersaglio': a.mitigazione_bersaglio || '',
+    'Urgenza mitigazione': a.urgenza_mitigazione || '',
+    'CO2 (kg/anno)': a.co2_kg_anno ?? '',
+    'Valore economico (€)': a.valore_economico_eur ?? '',
     'N. foto': contaFoto ? contaFoto(a) : (a.url_foto || []).length,
     'Link foto': (a.url_foto || []).join(' | '),
   }))
 
   const ws = XLSX.utils.json_to_sheet(righe)
-  // larghezze colonne proporzionate al contenuto tipico
-  ws['!cols'] = [
-    14, 24, 17, 22, 22, 24, 11, 11, 30, 22, 10, 9, 15, 14, 28, 26,
-    34, 16, 34, 15, 34, 16, 40, 5, 22, 12, 16, 16, 15, 36, 7, 50,
-  ].map((wch) => ({ wch }))
 
   // -------- foglio riepilogo: conteggi per committente x classe CPC --------
   const perComune = new Map()

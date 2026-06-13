@@ -3,44 +3,77 @@ import { useNavigate, useParams } from 'react-router-dom'
 import L from 'leaflet'
 import { useApp } from '../context/AppContext'
 import {
-  BERSAGLI, CPC_CLASSI, CPC_META, DIFETTI_CHIOMA, DIFETTI_FUSTO, DIFETTI_RADICI,
-  FASI_SVILUPPO, FREQUENZE, LOCALIZZAZIONI, PRESCRIZIONI_SUGGERITE,
-  RILEVATORE_DEFAULT, SPECIE, TIPI_INDAGINE, GRAVITA,
+  BERSAGLI, CPC_CLASSI, CPC_META, CLASSE_RISCHIO_META, COERENZA_FITOCLIMATICA,
+  CONFLITTI, DIMORA, DISTRETTI, FASI_SVILUPPO, FREQUENZE, LOCALIZZAZIONI,
+  PRESCRIZIONI_SUGGERITE, RILEVATORE_DEFAULT, SPECIE, TIPI_INDAGINE, GRAVITA,
+  URGENZE, VIGORIA, VINCOLI,
 } from '../lib/constants'
-import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC } from '../lib/cpc'
+import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio } from '../lib/cpc'
 import { getFotoByAlbero } from '../lib/db'
 import CpcBadge from '../components/CpcBadge'
 
 const PASSI = ['Identificazione', 'Biometria', 'Contesto', 'Difetti', 'Sintesi', 'Riepilogo']
 
+const distrettoVuoto = () => ({ difetti: [] })
+
 function recordVuoto() {
   return {
     id: crypto.randomUUID(),
     codice: '',
-    comune_id: '',
     data_rilievo: new Date().toISOString(),
     lat: null,
     lng: null,
+    // committente pre-selezionato in automatico dall'ultimo usato:
+    // la schermata di scelta compare solo se non c'è (prima volta) o con "cambia"
+    comune_id: localStorage.getItem('vta-ultimo-committente') || '',
     localizzazione: '',
     indirizzo: '',
     rilevatore: RILEVATORE_DEFAULT,
     specie_botanica: '',
+    // biometria estesa
     altezza_m: '',
     dbh_cm: '',
+    circonferenza_cm: '',
     diametro_chioma_m: '',
+    diametro_branca_cm: '',
+    lunghezza_branca_m: '',
+    altezza_branca_m: '',
+    altezza_bersaglio_m: '',
     fase_sviluppo: '',
+    // contesto e vincoli
     bersagli: [],
     frequenza_occupazione: '',
-    radici: { difetti: [], gravita: 0 },
-    fusto: { difetti: [], gravita: 0 },
-    chioma: { difetti: [], gravita: 0 },
+    conflitti: [],
+    coerenza_fitoclimatica: '',
+    vincoli: '',
+    dimora: '',
+    // difetti: 6 distretti (radici resta per i record vecchi)
+    zolla: distrettoVuoto(),
+    colletto: distrettoVuoto(),
+    fusto: distrettoVuoto(),
+    castello: distrettoVuoto(),
+    branche: distrettoVuoto(),
+    chioma: distrettoVuoto(),
+    // salute / vigoria
+    vigoria: '',
+    fitopatie: '',
+    agente_cariogeno: '',
     note_osservazioni: '',
+    // sintesi tecnica
     cpc: '',
+    classe_rischio: '',
     richiesta_indagine_strumentale: false,
     tipo_indagine_richiesta: 'Nessuna',
+    urgenza_indagine: '',
     data_prossimo_controllo: '',
     intervento_emergenza: false,
     prescrizioni_gestionali: '',
+    urgenza_intervento: '',
+    mitigazione_bersaglio: '',
+    urgenza_mitigazione: '',
+    // valori
+    co2_kg_anno: '',
+    valore_economico_eur: '',
     url_foto: [],
   }
 }
@@ -95,11 +128,20 @@ export default function SurveyPage() {
       }
       return b
     })
-    for (const k of ['radici', 'fusto', 'chioma']) {
+    // normalizza i difetti (stringhe → oggetti) su tutti i distretti
+    for (const k of ['radici', 'zolla', 'colletto', 'fusto', 'castello', 'branche', 'chioma']) {
       const sez = caricato[k]
       if (sez?.difetti?.length && typeof sez.difetti[0] === 'string') {
         caricato[k] = { difetti: sez.difetti.map((nome) => ({ nome, gravita: sez.gravita || 1 })) }
       }
+    }
+    // record vecchi (3 distretti): porta "radici" nella nuova "zolla radicale"
+    if (caricato.radici?.difetti?.length && !caricato.zolla?.difetti?.length) {
+      caricato.zolla = caricato.radici
+    }
+    // garantisce che i 6 distretti esistano sempre
+    for (const d of DISTRETTI) {
+      if (!caricato[d.key]) caricato[d.key] = distrettoVuoto()
     }
     setR(caricato)
   }, [id, alberi])
@@ -116,6 +158,13 @@ export default function SurveyPage() {
       : null
     return { nome: c.nome, count: suoi.length, prossimo: generaCodice(c.codice, alberi), ultimo }
   }, [scelta, comuni, alberi])
+
+  // se il committente memorizzato non è più tra quelli disponibili, torna a chiederlo
+  useEffect(() => {
+    if (!id && r.comune_id && comuni.length && !comuni.find((c) => c.id === r.comune_id)) {
+      set('comune_id', '')
+    }
+  }, [comuni, id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const avviaConCommittente = (comuneId) => {
     localStorage.setItem('vta-ultimo-committente', comuneId)
@@ -357,6 +406,7 @@ export default function SurveyPage() {
         return {
           ...prev,
           cpc,
+          classe_rischio: prev.classe_rischio || suggerisciRischio(cpc, prev.frequenza_occupazione),
           codice: prev.codice || generaCodice(comune?.codice || 'XXX', alberi),
           data_prossimo_controllo: dataProssimoControllo(cpc, new Date(prev.data_rilievo)),
         }
@@ -367,13 +417,21 @@ export default function SurveyPage() {
   }
 
   const salva = async () => {
+    const num = (v) => (v === '' || v == null ? null : Number(v))
     const record = {
       ...r,
       localizzazione: localizzazioneFinale(),
       bersagli: bersagliFinali(),
-      altezza_m: Number(r.altezza_m),
-      dbh_cm: Number(r.dbh_cm),
-      diametro_chioma_m: Number(r.diametro_chioma_m),
+      altezza_m: num(r.altezza_m),
+      dbh_cm: num(r.dbh_cm),
+      circonferenza_cm: num(r.circonferenza_cm),
+      diametro_chioma_m: num(r.diametro_chioma_m),
+      diametro_branca_cm: num(r.diametro_branca_cm),
+      lunghezza_branca_m: num(r.lunghezza_branca_m),
+      altezza_branca_m: num(r.altezza_branca_m),
+      altezza_bersaglio_m: num(r.altezza_bersaglio_m),
+      co2_kg_anno: num(r.co2_kg_anno),
+      valore_economico_eur: num(r.valore_economico_eur),
       comune_nome: comuni.find((c) => c.id === r.comune_id)?.nome,
     }
     await salvaAlbero(record, nuoveFoto.map((f) => f.blob))
@@ -381,6 +439,10 @@ export default function SurveyPage() {
   }
 
   const cpcSuggerita = useMemo(() => suggerisciCPC(r), [r])
+  const rischioSuggerito = useMemo(
+    () => suggerisciRischio(r.cpc || cpcSuggerita, r.frequenza_occupazione),
+    [r.cpc, cpcSuggerita, r.frequenza_occupazione]
+  )
 
   // ------------------------------------------------------- sezione difetti
   const SezioneDifetti = ({ campo, titolo, opzioni }) => {
@@ -760,10 +822,35 @@ export default function SurveyPage() {
                 <input type="number" step="1" min="0" className="field" value={r.dbh_cm} onChange={(e) => set('dbh_cm', e.target.value)} />
               </div>
               <div>
+                <label className="mb-1 block text-sm font-medium">Circonferenza (cm)</label>
+                <input type="number" step="1" min="0" className="field" value={r.circonferenza_cm} onChange={(e) => set('circonferenza_cm', e.target.value)} />
+              </div>
+              <div>
                 <label className="mb-1 block text-sm font-medium">Ø chioma (m) *</label>
                 <input type="number" step="0.5" min="0" className="field" value={r.diametro_chioma_m} onChange={(e) => set('diametro_chioma_m', e.target.value)} />
               </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">H bersaglio (m)</label>
+                <input type="number" step="0.5" min="0" className="field" value={r.altezza_bersaglio_m} onChange={(e) => set('altezza_bersaglio_m', e.target.value)} />
+              </div>
             </div>
+            <details className="rounded-lg border border-slate-200 p-3 text-sm">
+              <summary className="cursor-pointer font-medium text-slate-600">Dati branca principale (opzionale)</summary>
+              <div className="mt-2 grid grid-cols-3 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Ø branca (cm)</label>
+                  <input type="number" step="1" min="0" className="field" value={r.diametro_branca_cm} onChange={(e) => set('diametro_branca_cm', e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Lungh. branca (m)</label>
+                  <input type="number" step="0.5" min="0" className="field" value={r.lunghezza_branca_m} onChange={(e) => set('lunghezza_branca_m', e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">H branca (m)</label>
+                  <input type="number" step="0.5" min="0" className="field" value={r.altezza_branca_m} onChange={(e) => set('altezza_branca_m', e.target.value)} />
+                </div>
+              </div>
+            </details>
             <div>
               <label className="mb-1 block text-sm font-medium">Fase di sviluppo *</label>
               <div className="flex flex-wrap gap-2">
@@ -816,15 +903,81 @@ export default function SurveyPage() {
                 ))}
               </div>
             </div>
+            <div className="card">
+              <h3 className="mb-2 font-bold text-green-900">Conflitti con le strutture <span className="font-normal text-slate-400">(max 2 principali)</span></h3>
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {CONFLITTI.map((c) => {
+                  const sel = r.conflitti.includes(c)
+                  return (
+                    <label key={c} className={`flex cursor-pointer items-center gap-2 text-sm ${!sel && r.conflitti.length >= 2 ? 'opacity-40' : ''}`}>
+                      <input type="checkbox" className="h-4 w-4 accent-green-700"
+                        checked={sel}
+                        disabled={!sel && r.conflitti.length >= 2}
+                        onChange={() => set('conflitti', sel ? r.conflitti.filter((x) => x !== c) : [...r.conflitti, c])} />
+                      {c}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="card grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Coerenza fito-climatica</label>
+                <select className="field" value={r.coerenza_fitoclimatica} onChange={(e) => set('coerenza_fitoclimatica', e.target.value)}>
+                  <option value="">—</option>
+                  {COERENZA_FITOCLIMATICA.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Dimora</label>
+                <select className="field" value={r.dimora} onChange={(e) => set('dimora', e.target.value)}>
+                  <option value="">—</option>
+                  {DIMORA.map((d) => <option key={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Vincoli / valore</label>
+                <select className="field" value={r.vincoli} onChange={(e) => set('vincoli', e.target.value)}>
+                  <option value="">—</option>
+                  {VINCOLI.map((v) => <option key={v}>{v}</option>)}
+                </select>
+              </div>
+            </div>
           </div>
         )}
 
         {/* ============================================= PASSO 3: difetti VTA */}
         {passo === 3 && (
           <div className="space-y-4">
-            <SezioneDifetti campo="radici" titolo="Radici e colletto" opzioni={DIFETTI_RADICI} />
-            <SezioneDifetti campo="fusto" titolo="Fusto" opzioni={DIFETTI_FUSTO} />
-            <SezioneDifetti campo="chioma" titolo="Chioma e branche" opzioni={DIFETTI_CHIOMA} />
+            {DISTRETTI.map((d) => (
+              <SezioneDifetti key={d.key} campo={d.key} titolo={d.label} opzioni={d.opzioni} />
+            ))}
+
+            <div className="card space-y-3">
+              <h3 className="font-bold text-green-900">Salute e vigoria</h3>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Vigoria generale</label>
+                <div className="flex flex-wrap gap-2">
+                  {VIGORIA.map((v) => (
+                    <button key={v} type="button" onClick={() => set('vigoria', v)}
+                      className={`rounded-full px-4 py-1.5 text-sm font-medium ${r.vigoria === v ? 'bg-green-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Fitopatie</label>
+                  <input className="field" value={r.fitopatie} onChange={(e) => set('fitopatie', e.target.value)} placeholder="es. nessun segno / oidio…" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Agente cariogeno</label>
+                  <input className="field" value={r.agente_cariogeno} onChange={(e) => set('agente_cariogeno', e.target.value)} placeholder="es. nessun segno / Ganoderma…" />
+                </div>
+              </div>
+            </div>
+
             <div className="card border-2 border-red-200 bg-red-50/50">
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input type="checkbox" className="mt-0.5 h-5 w-5 accent-red-600"
@@ -872,38 +1025,94 @@ export default function SurveyPage() {
               )}
               <p className="text-xs text-slate-400">
                 Regola del valore peggiore (VTA Livello 1): la classe suggerita deriva dalla gravità massima
-                tra i tre distretti. La decisione finale spetta al valutatore.
+                tra i distretti. La decisione finale spetta al valutatore.
               </p>
             </div>
 
-            <div className="card space-y-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                <input type="checkbox" className="h-4 w-4 accent-green-700"
-                  checked={r.richiesta_indagine_strumentale}
-                  onChange={(e) => set('richiesta_indagine_strumentale', e.target.checked)} />
-                Richiesta indagine strumentale
-              </label>
-              {r.richiesta_indagine_strumentale && (
-                <select className="field" value={r.tipo_indagine_richiesta} onChange={(e) => set('tipo_indagine_richiesta', e.target.value)}>
-                  {TIPI_INDAGINE.map((t) => (
-                    <option key={t}>{t}</option>
-                  ))}
-                </select>
+            {/* Rischio Liv.2: propensione (CPC) × bersaglio (frequentazione) */}
+            <div className="card space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-green-900">Classe di rischio</h3>
+                <span className="text-xs text-slate-500">
+                  Suggerita: <strong style={{ color: CLASSE_RISCHIO_META[rischioSuggerito]?.color }}>{rischioSuggerito}</strong>
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {Object.keys(CLASSE_RISCHIO_META).map((k) => (
+                  <button key={k} type="button" onClick={() => set('classe_rischio', k)}
+                    className="rounded-xl border-2 p-2 text-center text-xs font-bold transition"
+                    style={{
+                      borderColor: r.classe_rischio === k ? CLASSE_RISCHIO_META[k].color : '#e2e8f0',
+                      backgroundColor: r.classe_rischio === k ? CLASSE_RISCHIO_META[k].bg : 'white',
+                      color: CLASSE_RISCHIO_META[k].color,
+                    }}>
+                    {k}
+                  </button>
+                ))}
+              </div>
+              {r.classe_rischio && (
+                <p className="text-xs text-slate-500">{CLASSE_RISCHIO_META[r.classe_rischio]?.nota}</p>
               )}
+              <p className="text-xs text-slate-400">
+                Incrocia la propensione (CPC) con il bersaglio (frequentazione: {r.frequenza_occupazione || '—'}).
+              </p>
+            </div>
+
+            {/* Prescrizioni strutturate con urgenza */}
+            <div className="card space-y-3">
               <div>
-                <label className="mb-1 block text-sm font-medium">Prescrizioni gestionali *</label>
-                <input className="field" list="prescrizioni" value={r.prescrizioni_gestionali} onChange={(e) => set('prescrizioni_gestionali', e.target.value)} placeholder="es. Potatura di rimonda" />
+                <label className="mb-1 block text-sm font-medium">Interventi colturali *</label>
+                <input className="field" list="prescrizioni" value={r.prescrizioni_gestionali} onChange={(e) => set('prescrizioni_gestionali', e.target.value)} placeholder="es. Potatura di rimonda del secco" />
                 <datalist id="prescrizioni">
-                  {PRESCRIZIONI_SUGGERITE.map((p) => (
-                    <option key={p}>{p}</option>
-                  ))}
+                  {PRESCRIZIONI_SUGGERITE.map((p) => (<option key={p}>{p}</option>))}
                 </datalist>
+                <UrgenzaScelta valore={r.urgenza_intervento} onScegli={(u) => set('urgenza_intervento', u)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Mitigazione del bersaglio</label>
+                <input className="field" value={r.mitigazione_bersaglio} onChange={(e) => set('mitigazione_bersaglio', e.target.value)} placeholder="es. transennamento, divieto di sosta, pannello informativo" />
+                <UrgenzaScelta valore={r.urgenza_mitigazione} onScegli={(u) => set('urgenza_mitigazione', u)} />
+              </div>
+              <div>
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" className="h-4 w-4 accent-green-700"
+                    checked={r.richiesta_indagine_strumentale}
+                    onChange={(e) => set('richiesta_indagine_strumentale', e.target.checked)} />
+                  Indagine strumentale di approfondimento
+                </label>
+                {r.richiesta_indagine_strumentale && (
+                  <>
+                    <select className="field mt-2" value={r.tipo_indagine_richiesta} onChange={(e) => set('tipo_indagine_richiesta', e.target.value)}>
+                      {TIPI_INDAGINE.map((t) => (<option key={t}>{t}</option>))}
+                    </select>
+                    <UrgenzaScelta valore={r.urgenza_indagine} onScegli={(u) => set('urgenza_indagine', u)} />
+                  </>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Data prossimo controllo (calcolata dalla CPC)</label>
                 <input type="date" className="field" value={r.data_prossimo_controllo} onChange={(e) => set('data_prossimo_controllo', e.target.value)} />
               </div>
             </div>
+
+            {/* Valori dell'albero (inserimento manuale, da i-Tree/CAVAT o stima) */}
+            <details className="card">
+              <summary className="cursor-pointer font-bold text-green-900">Valori dell'albero (opzionale)</summary>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">CO₂ stoccata (kg/anno)</label>
+                  <input type="number" step="1" min="0" className="field" value={r.co2_kg_anno} onChange={(e) => set('co2_kg_anno', e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Valore economico (€)</label>
+                  <input type="number" step="1" min="0" className="field" value={r.valore_economico_eur} onChange={(e) => set('valore_economico_eur', e.target.value)} />
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                Valori da inserire manualmente (es. stima i-Tree / metodo CAVAT o ornamentale): l'app li
+                archivia e li riporta in scheda ed Excel, ma non li calcola.
+              </p>
+            </details>
           </div>
         )}
 
@@ -936,10 +1145,15 @@ export default function SurveyPage() {
               <Riga k="Biometria" v={`H ${r.altezza_m} m · DBH ${r.dbh_cm} cm · chioma ${r.diametro_chioma_m} m · ${r.fase_sviluppo}`} />
               <Riga k="Bersagli" v={r.bersagli.length ? bersagliFinali().join(', ') : 'Nessuno'} />
               <Riga k="Frequentazione" v={r.frequenza_occupazione} />
+              {r.conflitti.length > 0 && <Riga k="Conflitti" v={r.conflitti.join(', ')} />}
+              {r.vincoli && <Riga k="Vincoli / valore" v={r.vincoli} />}
+              <Riga k="Vigoria" v={r.vigoria} />
               <Riga k="Stato" v={sintesiStato(r)} />
-              <Riga k="Indagine strumentale" v={r.richiesta_indagine_strumentale ? `Sì – ${r.tipo_indagine_richiesta}` : 'No'} />
+              <Riga k="Classe di rischio" v={r.classe_rischio} />
+              <Riga k="Indagine strumentale" v={r.richiesta_indagine_strumentale ? `Sì – ${r.tipo_indagine_richiesta}${r.urgenza_indagine ? ` (${r.urgenza_indagine})` : ''}` : 'No'} />
               <Riga k="Prossimo controllo" v={r.data_prossimo_controllo ? new Date(r.data_prossimo_controllo).toLocaleDateString('it-IT') : '—'} />
-              <Riga k="Prescrizioni" v={r.prescrizioni_gestionali} />
+              <Riga k="Interventi colturali" v={r.prescrizioni_gestionali ? `${r.prescrizioni_gestionali}${r.urgenza_intervento ? ` (${r.urgenza_intervento})` : ''}` : '—'} />
+              {r.mitigazione_bersaglio && <Riga k="Mitigazione bersaglio" v={`${r.mitigazione_bersaglio}${r.urgenza_mitigazione ? ` (${r.urgenza_mitigazione})` : ''}`} />}
               <Riga k="Foto" v={`${(r.url_foto?.length || 0) + nuoveFoto.length} allegate`} />
             </div>
 
@@ -1029,6 +1243,26 @@ function Riga({ k, v }) {
     <div className="flex gap-2 border-b border-slate-100 pb-1.5 last:border-0">
       <span className="w-40 shrink-0 font-semibold text-slate-500">{k}</span>
       <span>{v || '—'}</span>
+    </div>
+  )
+}
+
+// selettore compatto dell'urgenza per le prescrizioni
+function UrgenzaScelta({ valore, onScegli }) {
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1">
+      {URGENZE.map((u) => (
+        <button
+          key={u}
+          type="button"
+          onClick={() => onScegli(valore === u ? '' : u)}
+          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            valore === u ? 'bg-green-700 text-white' : 'bg-slate-100 text-slate-600'
+          }`}
+        >
+          {u}
+        </button>
+      ))}
     </div>
   )
 }

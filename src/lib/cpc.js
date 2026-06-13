@@ -1,4 +1,4 @@
-import { CPC_META, GRAVITA } from './constants'
+import { CPC_META, GRAVITA, DISTRETTI, DISTRETTI_KEYS } from './constants'
 
 // ----------------------------------------------------------------------------
 // VTA Livello 1 (triage visuale speditivo). La CPC dipende dai DIFETTI
@@ -23,13 +23,10 @@ export function gravitaDistretto(sezione) {
   return normalizzaDifetti(sezione).reduce((m, d) => Math.max(m, d.gravita || 0), 0)
 }
 
-// gravità massima dell'albero: il difetto più grave tra tutti i distretti
+// gravità massima dell'albero: il difetto più grave tra TUTTI i distretti
+// (i 6 nuovi + i vecchi radici/fusto/chioma per i record precedenti)
 export function gravitaMassima(record) {
-  return Math.max(
-    gravitaDistretto(record.radici),
-    gravitaDistretto(record.fusto),
-    gravitaDistretto(record.chioma),
-  )
+  return DISTRETTI_KEYS.reduce((m, k) => Math.max(m, gravitaDistretto(record[k])), 0)
 }
 
 export function gravitaLabel(v) {
@@ -62,22 +59,47 @@ export function generaCodice(codiceComune, alberiEsistenti) {
   return `${prefix}${String(massimo + 1).padStart(3, '0')}`
 }
 
+// etichette dei distretti per la sintesi (nuovi + compatibilità "radici")
+const ETICHETTE_DISTRETTI = {
+  radici: 'radici', ...Object.fromEntries(DISTRETTI.map((d) => [d.key, d.label.toLowerCase()])),
+}
+
 // Sintesi testuale dello stato fitosanitario/strutturale per popup e PDF
 export function sintesiStato(record) {
   const parti = []
-  for (const [nome, sezione] of [
-    ['radici', record.radici],
-    ['fusto', record.fusto],
-    ['chioma', record.chioma],
-  ]) {
-    const ds = normalizzaDifetti(sezione)
+  for (const k of DISTRETTI_KEYS) {
+    const ds = normalizzaDifetti(record[k])
     if (ds.length) {
       parti.push(
-        `${nome}: ` +
+        `${ETICHETTE_DISTRETTI[k]}: ` +
           ds.map((d) => `${d.nome.toLowerCase()} (${gravitaLabel(d.gravita).toLowerCase()})`).join(', ')
       )
     }
   }
   const testo = parti.length ? 'Difetti su ' + parti.join('; ') + '.' : 'Nessun difetto significativo rilevato.'
   return record.intervento_emergenza ? 'INTERVENTO DI EMERGENZA SEGNALATO. ' + testo : testo
+}
+
+// ----------------------------------------------------------------------------
+// Modulo Rischio Liv.2: la propensione (CPC) incrocia il bersaglio (dato dalla
+// frequenza di occupazione) in una matrice che restituisce la classe di rischio.
+// È un suggerimento, modificabile dal valutatore.
+// ----------------------------------------------------------------------------
+const MATRICE_RISCHIO = {
+  //          isolata     occasionale  costante
+  A:    ['Basso', 'Basso', 'Basso'],
+  B:    ['Basso', 'Basso', 'Moderato'],
+  C:    ['Basso', 'Moderato', 'Elevato'],
+  'C/D':['Moderato', 'Elevato', 'Estremo'],
+  D:    ['Elevato', 'Estremo', 'Estremo'],
+}
+
+export function indiceBersaglio(frequenza) {
+  if (frequenza === 'Area costantemente occupata') return 2
+  if (frequenza === 'Area occasionalmente frequentata') return 1
+  return 0
+}
+
+export function suggerisciRischio(cpc, frequenza) {
+  return MATRICE_RISCHIO[cpc]?.[indiceBersaglio(frequenza)] || 'Basso'
 }
