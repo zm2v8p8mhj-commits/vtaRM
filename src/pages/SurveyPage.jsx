@@ -9,6 +9,7 @@ import {
   URGENZE, VIGORIA,
 } from '../lib/constants'
 import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio } from '../lib/cpc'
+import { valutaConformitaCAM } from '../lib/cam'
 import { getFotoByAlbero } from '../lib/db'
 import CpcBadge from '../components/CpcBadge'
 
@@ -103,6 +104,7 @@ export default function SurveyPage() {
   const accCircleRef = useRef(null) // cerchio di accuratezza GPS
   const [indirizzoStato, setIndirizzoStato] = useState('inattivo')
   const autoIndRef = useRef(false)
+  const camManualeRef = useRef(false) // true = conformità CAM scelta a mano (non sovrascrivere)
   const programmaticRef = useRef(false) // distingue i movimenti mappa nostri da quelli dell'utente
 
   const set = (campo, valore) => setR((prev) => ({ ...prev, [campo]: valore }))
@@ -141,6 +143,7 @@ export default function SurveyPage() {
     for (const d of DISTRETTI) {
       if (!caricato[d.key]) caricato[d.key] = distrettoVuoto()
     }
+    camManualeRef.current = true // su un rilievo esistente non sovrascrivere la conformità salvata
     setR(caricato)
   }, [id, alberi])
 
@@ -442,6 +445,13 @@ export default function SurveyPage() {
     [r.cpc, cpcSuggerita, r.frequenza_occupazione]
   )
 
+  // conformità ai CAM suggerita dalla specie; pre-compila il campo finché il
+  // valutatore non sceglie a mano (camManualeRef)
+  const camSuggerito = useMemo(() => valutaConformitaCAM(r.specie_botanica), [r.specie_botanica])
+  useEffect(() => {
+    if (!camManualeRef.current && camSuggerito) set('conformita_cam', camSuggerito.esito)
+  }, [camSuggerito]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ------------------------------------------------------- sezione difetti
   const SezioneDifetti = ({ campo, titolo, opzioni }) => {
     const sez = r[campo]
@@ -522,7 +532,7 @@ export default function SurveyPage() {
             {r.codice} – {r.specie_botanica} · <CpcBadge cpc={r.cpc} esteso />
           </p>
           <div className="mt-5 flex justify-center gap-3">
-            <button className="btn-primary" onClick={() => { setR({ ...recordVuoto(), comune_id: r.comune_id }); setNuoveFoto([]); setNumFotoLocali(0); setAltroLoc(''); setAltroBersaglio(''); autoIndRef.current = false; setIndirizzoStato('inattivo'); setPasso(0); setSalvato(false); setGps({ stato: 'inattivo', accuratezza: null }) }}>
+            <button className="btn-primary" onClick={() => { setR({ ...recordVuoto(), comune_id: r.comune_id }); setNuoveFoto([]); setNumFotoLocali(0); setAltroLoc(''); setAltroBersaglio(''); autoIndRef.current = false; camManualeRef.current = false; setIndirizzoStato('inattivo'); setPasso(0); setSalvato(false); setGps({ stato: 'inattivo', accuratezza: null }) }}>
               🌳 Nuovo rilievo
             </button>
             <button className="btn-secondary" onClick={() => navigate('/mappa')}>Vai alla mappa</button>
@@ -925,12 +935,23 @@ export default function SurveyPage() {
               </p>
               <div className="flex flex-wrap gap-2">
                 {CONFORMITA_CAM.map((c) => (
-                  <button key={c} type="button" onClick={() => set('conformita_cam', r.conformita_cam === c ? '' : c)}
+                  <button key={c} type="button"
+                    onClick={() => { camManualeRef.current = true; set('conformita_cam', r.conformita_cam === c ? '' : c) }}
                     className={`rounded-full px-4 py-1.5 text-sm font-medium ${r.conformita_cam === c ? 'bg-green-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
                     {c}
                   </button>
                 ))}
               </div>
+              {camSuggerito ? (
+                <p className="mt-2 text-xs text-slate-500">
+                  🤖 Suggerito dalla specie <em>{r.specie_botanica}</em>:{' '}
+                  <strong>{camSuggerito.esito}</strong> — {camSuggerito.motivo}.
+                </p>
+              ) : r.specie_botanica ? (
+                <p className="mt-2 text-xs text-slate-400">
+                  Specie non in elenco automatico: valuta manualmente la conformità.
+                </p>
+              ) : null}
             </div>
           </div>
         )}
