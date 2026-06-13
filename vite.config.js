@@ -9,6 +9,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false, // registrazione gestita a mano in main.jsx (auto-reload)
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'GreenCure VTA – Gestione del Verde',
@@ -28,6 +29,9 @@ export default defineConfig({
         ]
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: 'index.html',
         runtimeCaching: [

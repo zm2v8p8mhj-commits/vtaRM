@@ -228,11 +228,26 @@ export default function MapPage() {
         onModifica={(albero) => navigate(`/rilievo/${albero.id}`)}
       />
 
-      {/* pulsante + per avviare subito un nuovo rilievo (comodo su mobile) */}
+      {/* messaggio guida quando non c'è ancora nessun albero censito */}
+      {alberi.length === 0 && (
+        <div className="pointer-events-none absolute inset-x-0 top-20 z-30 flex justify-center px-4">
+          <div className="max-w-xs rounded-xl bg-white/95 px-4 py-3 text-center shadow-lg">
+            <p className="text-sm font-semibold text-green-900">Nessun albero censito</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Tocca il pulsante verde <span className="font-bold">+</span> in basso a destra
+              per iniziare il primo rilievo.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* pulsante + per avviare subito un nuovo rilievo: fixed e z alto per
+          restare sopra mappa e barra di navigazione anche su mobile */}
       <button
         onClick={() => navigate('/rilievo')}
         title="Nuovo rilievo"
-        className="absolute right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-3xl font-light text-white shadow-lg active:scale-95 sm:bottom-6"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+        className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-3xl font-light text-white shadow-lg active:scale-95"
       >
         +
       </button>
