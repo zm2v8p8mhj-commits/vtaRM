@@ -120,9 +120,7 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   riga('Bersagli presenti', albero.bersagli?.length ? albero.bersagli.join(', ') : 'Nessuno')
   riga('Frequenza occupazione', albero.frequenza_occupazione)
   if (albero.conflitti?.length) riga('Conflitti', albero.conflitti.join(', '))
-  if (albero.coerenza_fitoclimatica) riga('Coerenza fito-climatica', albero.coerenza_fitoclimatica)
-  if (albero.dimora) riga('Dimora', albero.dimora)
-  if (albero.vincoli) riga('Vincoli / valore', albero.vincoli)
+  if (albero.conformita_cam) riga('Conformità CAM Verde Urbano', albero.conformita_cam)
 
   titoloSezione('4. Analisi dei difetti')
   for (const [nome, sez] of DISTRETTI_PDF) {

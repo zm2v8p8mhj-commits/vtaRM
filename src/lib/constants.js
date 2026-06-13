@@ -133,17 +133,13 @@ export const DISTRETTI_KEYS = ['radici', 'zolla', 'colletto', 'fusto', 'castello
 // Salute e vigoria
 export const VIGORIA = ['Buona', 'Media', 'Scarsa', 'Deperimento']
 
-// Contesto e vincoli
-export const COERENZA_FITOCLIMATICA = ['A – Optimum', 'B – Idonea', 'C – Non idonea']
-export const DIMORA = ['Suolo pubblico', 'Suolo privato', 'Area scolastica', 'Area cimiteriale', 'Altro']
+// Contesto
 export const CONFLITTI = [
   'Marciapiedi', 'Pavimentazione / asfalto', 'Sottoservizi', 'Edifici',
   'Cavi aerei', 'Segnaletica / arredo', 'Muri / recinzioni', 'Altro',
 ]
-export const VINCOLI = [
-  'Nessuno', 'Albero monumentale (L. 10/2013)', 'Vincolo paesaggistico',
-  'Albero veterano', 'Altro',
-]
+// Conformità della specie ai CAM Verde Urbano rispetto al sito
+export const CONFORMITA_CAM = ['Conforme', 'Non conforme', 'Da verificare']
 
 // Prescrizioni con urgenza
 export const URGENZE = ['Subito', 'Entro 6 mesi', 'Al bisogno', 'Programmabile']

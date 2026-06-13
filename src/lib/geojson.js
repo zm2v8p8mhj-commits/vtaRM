@@ -9,7 +9,7 @@ const CAMPI_PROPRIETA = [
   'altezza_m', 'dbh_cm', 'circonferenza_cm', 'diametro_chioma_m',
   'diametro_branca_cm', 'lunghezza_branca_m', 'altezza_branca_m', 'altezza_bersaglio_m',
   'fase_sviluppo', 'vigoria', 'fitopatie', 'agente_cariogeno',
-  'bersagli', 'frequenza_occupazione', 'conflitti', 'coerenza_fitoclimatica', 'dimora', 'vincoli',
+  'bersagli', 'frequenza_occupazione', 'conflitti', 'conformita_cam',
   'zolla', 'colletto', 'fusto', 'castello', 'branche', 'chioma', 'radici',
   'note_osservazioni', 'cpc', 'classe_rischio', 'intervento_emergenza',
   'richiesta_indagine_strumentale', 'tipo_indagine_richiesta', 'urgenza_indagine',

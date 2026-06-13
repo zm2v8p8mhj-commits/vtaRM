@@ -57,11 +57,9 @@ create table public.alberi (
   vigoria                         text,
   fitopatie                       text,
   agente_cariogeno                text,
-  -- contesto e vincoli
+  -- contesto
   conflitti                       jsonb not null default '[]',
-  coerenza_fitoclimatica          text,
-  dimora                          text,
-  vincoli                         text,
+  conformita_cam                  text,
   note_osservazioni               text,
   cpc                             text not null check (cpc in ('A', 'B', 'C', 'C/D', 'D')),
   classe_rischio                  text,

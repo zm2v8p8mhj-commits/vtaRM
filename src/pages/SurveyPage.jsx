@@ -3,10 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import L from 'leaflet'
 import { useApp } from '../context/AppContext'
 import {
-  BERSAGLI, CPC_CLASSI, CPC_META, CLASSE_RISCHIO_META, COERENZA_FITOCLIMATICA,
-  CONFLITTI, DIMORA, DISTRETTI, FASI_SVILUPPO, FREQUENZE, LOCALIZZAZIONI,
+  BERSAGLI, CPC_CLASSI, CPC_META, CLASSE_RISCHIO_META, CONFORMITA_CAM,
+  CONFLITTI, DISTRETTI, FASI_SVILUPPO, FREQUENZE, LOCALIZZAZIONI,
   PRESCRIZIONI_SUGGERITE, RILEVATORE_DEFAULT, SPECIE, TIPI_INDAGINE, GRAVITA,
-  URGENZE, VIGORIA, VINCOLI,
+  URGENZE, VIGORIA,
 } from '../lib/constants'
 import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio } from '../lib/cpc'
 import { getFotoByAlbero } from '../lib/db'
@@ -44,9 +44,7 @@ function recordVuoto() {
     bersagli: [],
     frequenza_occupazione: '',
     conflitti: [],
-    coerenza_fitoclimatica: '',
-    vincoli: '',
-    dimora: '',
+    conformita_cam: '',
     // difetti: 6 distretti (radici resta per i record vecchi)
     zolla: distrettoVuoto(),
     colletto: distrettoVuoto(),
@@ -920,27 +918,18 @@ export default function SurveyPage() {
                 })}
               </div>
             </div>
-            <div className="card grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Coerenza fito-climatica</label>
-                <select className="field" value={r.coerenza_fitoclimatica} onChange={(e) => set('coerenza_fitoclimatica', e.target.value)}>
-                  <option value="">—</option>
-                  {COERENZA_FITOCLIMATICA.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Dimora</label>
-                <select className="field" value={r.dimora} onChange={(e) => set('dimora', e.target.value)}>
-                  <option value="">—</option>
-                  {DIMORA.map((d) => <option key={d}>{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Vincoli / valore</label>
-                <select className="field" value={r.vincoli} onChange={(e) => set('vincoli', e.target.value)}>
-                  <option value="">—</option>
-                  {VINCOLI.map((v) => <option key={v}>{v}</option>)}
-                </select>
+            <div className="card">
+              <label className="mb-1 block text-sm font-medium">Conformità ai CAM Verde Urbano</label>
+              <p className="mb-2 text-xs text-slate-500">
+                La specie è coerente con i Criteri Ambientali Minimi per il verde urbano rispetto a questo sito?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {CONFORMITA_CAM.map((c) => (
+                  <button key={c} type="button" onClick={() => set('conformita_cam', r.conformita_cam === c ? '' : c)}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium ${r.conformita_cam === c ? 'bg-green-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                    {c}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -1146,7 +1135,7 @@ export default function SurveyPage() {
               <Riga k="Bersagli" v={r.bersagli.length ? bersagliFinali().join(', ') : 'Nessuno'} />
               <Riga k="Frequentazione" v={r.frequenza_occupazione} />
               {r.conflitti.length > 0 && <Riga k="Conflitti" v={r.conflitti.join(', ')} />}
-              {r.vincoli && <Riga k="Vincoli / valore" v={r.vincoli} />}
+              {r.conformita_cam && <Riga k="Conformità CAM" v={r.conformita_cam} />}
               <Riga k="Vigoria" v={r.vigoria} />
               <Riga k="Stato" v={sintesiStato(r)} />
               <Riga k="Classe di rischio" v={r.classe_rischio} />
