@@ -144,13 +144,13 @@ export default function PublicMapPage() {
           <button
             type="button"
             aria-label="Chiudi filtri"
-            className="absolute inset-0 z-20 bg-slate-950/35 sm:hidden"
+            className="absolute inset-0 z-[1040] bg-slate-950/35 sm:hidden"
             onClick={() => setFiltriAperti(false)}
           />
         )}
 
         <aside
-          className={`absolute inset-x-0 bottom-0 z-30 flex max-h-[78%] shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl transition-transform duration-200 sm:relative sm:inset-auto sm:z-10 sm:max-h-none sm:w-72 sm:rounded-none sm:border-r sm:border-t-0 sm:shadow-none ${
+          className={`absolute inset-x-0 bottom-0 z-[1050] flex max-h-[78%] shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl transition-transform duration-200 sm:relative sm:inset-auto sm:z-[1050] sm:max-h-none sm:w-72 sm:rounded-none sm:border-r sm:border-t-0 sm:shadow-none ${
             filtriAperti ? 'translate-y-0' : 'translate-y-full sm:translate-y-0'
           }`}
         >

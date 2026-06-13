@@ -59,14 +59,14 @@ export default function MapPage() {
         <button
           type="button"
           aria-label="Chiudi filtri"
-          className="absolute inset-0 z-20 bg-slate-950/35 sm:hidden"
+          className="absolute inset-0 z-[1040] bg-slate-950/35 sm:hidden"
           onClick={() => setSidebarAperta(false)}
         />
       )}
 
       {/* ----------------------------------------------- barra laterale filtri */}
       <aside
-        className={`absolute inset-x-0 bottom-0 z-30 flex max-h-[78%] shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl transition-transform duration-200 sm:relative sm:inset-auto sm:z-10 sm:max-h-none sm:w-72 sm:rounded-none sm:border-r sm:border-t-0 sm:shadow-none ${
+        className={`absolute inset-x-0 bottom-0 z-[1050] flex max-h-[78%] shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl transition-transform duration-200 sm:relative sm:inset-auto sm:z-[1050] sm:max-h-none sm:w-72 sm:rounded-none sm:border-r sm:border-t-0 sm:shadow-none ${
           sidebarAperta
             ? 'translate-y-0'
             : 'translate-y-full sm:-ml-72 sm:translate-y-0'
@@ -212,7 +212,7 @@ export default function MapPage() {
 
       <button
         onClick={() => setSidebarAperta(!sidebarAperta)}
-        className={`absolute left-3 top-3 z-10 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-lg sm:left-0 sm:rounded-l-none ${
+        className={`absolute left-3 top-3 z-[1030] rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-lg sm:left-0 sm:rounded-l-none ${
           sidebarAperta ? 'hidden sm:block' : ''
         }`}
         style={{ left: sidebarAperta ? '18rem' : undefined }}
@@ -228,9 +228,13 @@ export default function MapPage() {
         onModifica={(albero) => navigate(`/rilievo/${albero.id}`)}
       />
 
-      {/* messaggio guida quando non c'è ancora nessun albero censito */}
+      {/* messaggio guida quando non c'è ancora nessun albero censito.
+          z-index alto: Leaflet usa livelli fino a 1000, va superato. */}
       {alberi.length === 0 && (
-        <div className="pointer-events-none absolute inset-x-0 top-20 z-30 flex justify-center px-4">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-20 flex justify-center px-4"
+          style={{ zIndex: 1020 }}
+        >
           <div className="max-w-xs rounded-xl bg-white/95 px-4 py-3 text-center shadow-lg">
             <p className="text-sm font-semibold text-green-900">Nessun albero censito</p>
             <p className="mt-1 text-xs text-slate-500">
@@ -241,13 +245,13 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* pulsante + per avviare subito un nuovo rilievo: fixed e z alto per
-          restare sopra mappa e barra di navigazione anche su mobile */}
+      {/* pulsante + per avviare subito un nuovo rilievo: fixed e z-index oltre
+          i livelli di Leaflet (max ~1000), così resta sopra mappa e marker */}
       <button
         onClick={() => navigate('/rilievo')}
         title="Nuovo rilievo"
-        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
-        className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-3xl font-light text-white shadow-lg active:scale-95"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))', zIndex: 1100 }}
+        className={`fixed right-4 h-14 w-14 items-center justify-center rounded-full bg-green-700 text-3xl font-light text-white shadow-lg active:scale-95 ${sidebarAperta ? 'hidden sm:flex' : 'flex'}`}
       >
         +
       </button>
