@@ -14,7 +14,9 @@ const CAMPI_PROPRIETA = [
   'note_osservazioni', 'cpc', 'classe_rischio', 'intervento_emergenza',
   'richiesta_indagine_strumentale', 'tipo_indagine_richiesta', 'urgenza_indagine',
   'data_prossimo_controllo', 'prescrizioni_gestionali', 'urgenza_intervento',
-  'mitigazione_bersaglio', 'urgenza_mitigazione', 'co2_kg_anno', 'valore_economico_eur',
+  'mitigazione_bersaglio', 'urgenza_mitigazione',
+  'co2_stoccata_kg', 'canopy_cover_m2', 'valore_economico_eur',
+  'data_ultimo_intervento', 'note_gestione',
   'url_foto',
 ]
 

@@ -140,12 +140,15 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
     ? `${albero.prescrizioni_gestionali}${albero.urgenza_intervento ? ` (${albero.urgenza_intervento})` : ''}` : '—')
   if (albero.mitigazione_bersaglio) riga('Mitigazione bersaglio',
     `${albero.mitigazione_bersaglio}${albero.urgenza_mitigazione ? ` (${albero.urgenza_mitigazione})` : ''}`)
-  if (albero.co2_kg_anno != null || albero.valore_economico_eur != null) {
-    riga('Valori', [
-      albero.co2_kg_anno != null ? `CO₂ ${albero.co2_kg_anno} kg/anno` : null,
+  if (albero.co2_stoccata_kg != null || albero.canopy_cover_m2 != null || albero.valore_economico_eur != null) {
+    riga('Servizi ecosistemici', [
+      albero.co2_stoccata_kg != null ? `CO₂ stoccata ${albero.co2_stoccata_kg} kg` : null,
+      albero.canopy_cover_m2 != null ? `canopy ${albero.canopy_cover_m2} m²` : null,
       albero.valore_economico_eur != null ? `valore € ${albero.valore_economico_eur}` : null,
     ].filter(Boolean).join(' · '))
   }
+  if (albero.data_ultimo_intervento) riga('Ultimo intervento', new Date(albero.data_ultimo_intervento).toLocaleDateString('it-IT'))
+  if (albero.note_gestione) riga('Note gestione', albero.note_gestione)
 
   // Foto in coda alla scheda
   const dataUrls = (await Promise.all(fotoUrls.slice(0, 4).map(urlToDataURL))).filter(Boolean)

@@ -10,6 +10,7 @@ import {
 } from '../lib/constants'
 import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio } from '../lib/cpc'
 import { valutaConformitaCAM } from '../lib/cam'
+import { canopyCover, stimaCO2 } from '../lib/servizi'
 import { getFotoByAlbero } from '../lib/db'
 import CpcBadge from '../components/CpcBadge'
 
@@ -46,6 +47,11 @@ function recordVuoto() {
     frequenza_occupazione: '',
     conflitti: [],
     conformita_cam: '',
+    // servizi ecosistemici e gestione (sezione d'ufficio)
+    co2_stoccata_kg: '',
+    canopy_cover_m2: '',
+    data_ultimo_intervento: '',
+    note_gestione: '',
     // difetti: 6 distretti (radici resta per i record vecchi)
     zolla: distrettoVuoto(),
     colletto: distrettoVuoto(),
@@ -88,6 +94,9 @@ export default function SurveyPage() {
   // testo libero per le voci "Altro" (localizzazione e bersagli)
   const [altroLoc, setAltroLoc] = useState('')
   const [altroBersaglio, setAltroBersaglio] = useState('')
+  const [altroConflitto, setAltroConflitto] = useState('')
+  // distinzione campo/ufficio: alcune voci si completano in studio al PC
+  const [isDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
   // scelta del committente prima di iniziare il rilievo (ricorda l'ultimo usato)
   const [scelta, setScelta] = useState(() => localStorage.getItem('vta-ultimo-committente') || '')
   const [mostraNuovo, setMostraNuovo] = useState(false)
@@ -127,6 +136,13 @@ export default function SurveyPage() {
         return 'Altro'
       }
       return b
+    })
+    caricato.conflitti = (caricato.conflitti || []).map((c) => {
+      if (c.startsWith('Altro – ')) {
+        setAltroConflitto(c.slice('Altro – '.length))
+        return 'Altro'
+      }
+      return c
     })
     // normalizza i difetti (stringhe → oggetti) su tutti i distretti
     for (const k of ['radici', 'zolla', 'colletto', 'fusto', 'castello', 'branche', 'chioma']) {
@@ -204,6 +220,8 @@ export default function SurveyPage() {
     r.localizzazione === 'Altro' ? `Altro – ${altroLoc.trim()}` : r.localizzazione
   const bersagliFinali = () =>
     r.bersagli.map((b) => (b === 'Altro' ? `Altro – ${altroBersaglio.trim()}` : b))
+  const conflittiFinali = () =>
+    r.conflitti.map((c) => (c === 'Altro' ? `Altro – ${altroConflitto.trim()}` : c))
 
   // ------------------------------------------------------------------- GPS
   // watchPosition per ~12s tenendo la lettura più accurata, poi correzione
@@ -423,6 +441,7 @@ export default function SurveyPage() {
       ...r,
       localizzazione: localizzazioneFinale(),
       bersagli: bersagliFinali(),
+      conflitti: conflittiFinali(),
       altezza_m: num(r.altezza_m),
       dbh_cm: num(r.dbh_cm),
       circonferenza_cm: num(r.circonferenza_cm),
@@ -431,8 +450,12 @@ export default function SurveyPage() {
       lunghezza_branca_m: num(r.lunghezza_branca_m),
       altezza_branca_m: num(r.altezza_branca_m),
       altezza_bersaglio_m: num(r.altezza_bersaglio_m),
-      co2_kg_anno: num(r.co2_kg_anno),
       valore_economico_eur: num(r.valore_economico_eur),
+      // servizi ecosistemici: usa il valore inserito a mano (PC) o la stima automatica
+      co2_stoccata_kg: num(r.co2_stoccata_kg) ?? co2Stimata,
+      canopy_cover_m2: num(r.canopy_cover_m2) ?? canopyStimato,
+      // su mobile la parte gestionale resta da confermare in studio
+      note_gestione: r.note_gestione || (!isDesktop ? 'Da confermare in studio' : ''),
       comune_nome: comuni.find((c) => c.id === r.comune_id)?.nome,
     }
     await salvaAlbero(record, nuoveFoto.map((f) => f.blob))
@@ -451,6 +474,10 @@ export default function SurveyPage() {
   useEffect(() => {
     if (!camManualeRef.current && camSuggerito) set('conformita_cam', camSuggerito.esito)
   }, [camSuggerito]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // servizi ecosistemici calcolati dai dati biometrici
+  const co2Stimata = useMemo(() => stimaCO2(r.specie_botanica, r.dbh_cm, r.altezza_m), [r.specie_botanica, r.dbh_cm, r.altezza_m])
+  const canopyStimato = useMemo(() => canopyCover(r.diametro_chioma_m), [r.diametro_chioma_m])
 
   // ------------------------------------------------------- sezione difetti
   const SezioneDifetti = ({ campo, titolo, opzioni }) => {
@@ -532,7 +559,7 @@ export default function SurveyPage() {
             {r.codice} – {r.specie_botanica} · <CpcBadge cpc={r.cpc} esteso />
           </p>
           <div className="mt-5 flex justify-center gap-3">
-            <button className="btn-primary" onClick={() => { setR({ ...recordVuoto(), comune_id: r.comune_id }); setNuoveFoto([]); setNumFotoLocali(0); setAltroLoc(''); setAltroBersaglio(''); autoIndRef.current = false; camManualeRef.current = false; setIndirizzoStato('inattivo'); setPasso(0); setSalvato(false); setGps({ stato: 'inattivo', accuratezza: null }) }}>
+            <button className="btn-primary" onClick={() => { setR({ ...recordVuoto(), comune_id: r.comune_id }); setNuoveFoto([]); setNumFotoLocali(0); setAltroLoc(''); setAltroBersaglio(''); setAltroConflitto(''); autoIndRef.current = false; camManualeRef.current = false; setIndirizzoStato('inattivo'); setPasso(0); setSalvato(false); setGps({ stato: 'inattivo', accuratezza: null }) }}>
               🌳 Nuovo rilievo
             </button>
             <button className="btn-secondary" onClick={() => navigate('/mappa')}>Vai alla mappa</button>
@@ -927,6 +954,15 @@ export default function SurveyPage() {
                   )
                 })}
               </div>
+              {r.conflitti.includes('Altro') && (
+                <input
+                  className="field mt-3"
+                  autoFocus
+                  placeholder="Specifica il conflitto (es. Pista ciclabile)…"
+                  value={altroConflitto}
+                  onChange={(e) => setAltroConflitto(e.target.value)}
+                />
+              )}
             </div>
             <div className="card">
               <label className="mb-1 block text-sm font-medium">Conformità ai CAM Verde Urbano</label>
@@ -1105,24 +1141,63 @@ export default function SurveyPage() {
               </div>
             </div>
 
-            {/* Valori dell'albero (inserimento manuale, da i-Tree/CAVAT o stima) */}
-            <details className="card">
-              <summary className="cursor-pointer font-bold text-green-900">Valori dell'albero (opzionale)</summary>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">CO₂ stoccata (kg/anno)</label>
-                  <input type="number" step="1" min="0" className="field" value={r.co2_kg_anno} onChange={(e) => set('co2_kg_anno', e.target.value)} />
+            {/* Servizi ecosistemici e gestione: parte calcolata in automatico +
+                parte da confermare/completare in studio (PC) */}
+            <div className="card space-y-3">
+              <h3 className="font-bold text-green-900">Servizi ecosistemici e gestione</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-green-50 px-3 py-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700">CO₂ stoccata (stima)</div>
+                  <div className="text-lg font-bold text-green-900">
+                    {co2Stimata != null ? `${co2Stimata.toLocaleString('it-IT')} kg` : '—'}
+                  </div>
+                  <div className="text-[10px] text-slate-500">da specie + DBH + altezza</div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Valore economico (€)</label>
-                  <input type="number" step="1" min="0" className="field" value={r.valore_economico_eur} onChange={(e) => set('valore_economico_eur', e.target.value)} />
+                <div className="rounded-lg bg-green-50 px-3 py-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700">Canopy cover</div>
+                  <div className="text-lg font-bold text-green-900">
+                    {canopyStimato != null ? `${canopyStimato.toLocaleString('it-IT')} m²` : '—'}
+                  </div>
+                  <div className="text-[10px] text-slate-500">proiezione della chioma</div>
                 </div>
               </div>
-              <p className="mt-2 text-xs text-slate-400">
-                Valori da inserire manualmente (es. stima i-Tree / metodo CAVAT o ornamentale): l'app li
-                archivia e li riporta in scheda ed Excel, ma non li calcola.
+              <p className="text-xs text-slate-400">
+                Stime calcolate automaticamente dai dati biometrici (speditive, per il monitoraggio
+                regionale). La CO₂ è una stima allometrica, non sostituisce i-Tree.
               </p>
-            </details>
+
+              {isDesktop ? (
+                <div className="space-y-3 border-t border-slate-100 pt-3">
+                  <p className="text-xs font-semibold text-slate-500">Gestione (completamento in studio)</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Data ultimo intervento</label>
+                      <input type="date" className="field" value={r.data_ultimo_intervento} onChange={(e) => set('data_ultimo_intervento', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Valore economico (€)</label>
+                      <input type="number" step="1" min="0" className="field" value={r.valore_economico_eur} onChange={(e) => set('valore_economico_eur', e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Note gestione / cronologia interventi</label>
+                    <textarea className="field" rows="2" value={r.note_gestione} onChange={(e) => set('note_gestione', e.target.value)} placeholder="es. potatura 2024, irrigazione di soccorso…" />
+                  </div>
+                  <label className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                    <input type="checkbox" className="h-4 w-4 accent-green-700"
+                      checked={Number.isFinite(Number(r.co2_stoccata_kg)) && r.co2_stoccata_kg !== ''}
+                      onChange={(e) => set('co2_stoccata_kg', e.target.checked ? (co2Stimata ?? '') : '')} />
+                    Conferma la stima CO₂ (altrimenti resta il valore calcolato)
+                  </label>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  📋 Data ultimo intervento, note di gestione e conferma dei valori si completano
+                  <strong> in studio dal PC</strong>: questo rilievo verrà salvato con la dicitura
+                  «Da confermare in studio».
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1155,7 +1230,7 @@ export default function SurveyPage() {
               <Riga k="Biometria" v={`H ${r.altezza_m} m · DBH ${r.dbh_cm} cm · chioma ${r.diametro_chioma_m} m · ${r.fase_sviluppo}`} />
               <Riga k="Bersagli" v={r.bersagli.length ? bersagliFinali().join(', ') : 'Nessuno'} />
               <Riga k="Frequentazione" v={r.frequenza_occupazione} />
-              {r.conflitti.length > 0 && <Riga k="Conflitti" v={r.conflitti.join(', ')} />}
+              {r.conflitti.length > 0 && <Riga k="Conflitti" v={conflittiFinali().join(', ')} />}
               {r.conformita_cam && <Riga k="Conformità CAM" v={r.conformita_cam} />}
               <Riga k="Vigoria" v={r.vigoria} />
               <Riga k="Stato" v={sintesiStato(r)} />
@@ -1164,6 +1239,8 @@ export default function SurveyPage() {
               <Riga k="Prossimo controllo" v={r.data_prossimo_controllo ? new Date(r.data_prossimo_controllo).toLocaleDateString('it-IT') : '—'} />
               <Riga k="Interventi colturali" v={r.prescrizioni_gestionali ? `${r.prescrizioni_gestionali}${r.urgenza_intervento ? ` (${r.urgenza_intervento})` : ''}` : '—'} />
               {r.mitigazione_bersaglio && <Riga k="Mitigazione bersaglio" v={`${r.mitigazione_bersaglio}${r.urgenza_mitigazione ? ` (${r.urgenza_mitigazione})` : ''}`} />}
+              <Riga k="CO₂ stoccata (stima)" v={co2Stimata != null ? `${co2Stimata.toLocaleString('it-IT')} kg` : '—'} />
+              <Riga k="Canopy cover" v={canopyStimato != null ? `${canopyStimato.toLocaleString('it-IT')} m²` : '—'} />
               <Riga k="Foto" v={`${(r.url_foto?.length || 0) + nuoveFoto.length} allegate`} />
             </div>
 

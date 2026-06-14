@@ -70,8 +70,11 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'Urgenza interventi': a.urgenza_intervento || '',
     'Mitigazione bersaglio': a.mitigazione_bersaglio || '',
     'Urgenza mitigazione': a.urgenza_mitigazione || '',
-    'CO2 (kg/anno)': a.co2_kg_anno ?? '',
+    'CO2 stoccata (kg)': a.co2_stoccata_kg ?? '',
+    'Canopy cover (m²)': a.canopy_cover_m2 ?? '',
     'Valore economico (€)': a.valore_economico_eur ?? '',
+    'Data ultimo intervento': dataIT(a.data_ultimo_intervento),
+    'Note gestione': a.note_gestione || '',
     'N. foto': contaFoto ? contaFoto(a) : (a.url_foto || []).length,
     'Link foto': (a.url_foto || []).join(' | '),
   }))

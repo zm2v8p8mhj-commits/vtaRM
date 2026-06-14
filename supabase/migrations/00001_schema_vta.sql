@@ -73,7 +73,11 @@ create table public.alberi (
   mitigazione_bersaglio           text,
   urgenza_mitigazione             text,
   co2_kg_anno                     real,
+  co2_stoccata_kg                 real,
+  canopy_cover_m2                 real,
   valore_economico_eur            real,
+  data_ultimo_intervento          date,
+  note_gestione                   text,
   url_foto                        jsonb not null default '[]',
   created_at                      timestamptz not null default now(),
   updated_at                      timestamptz not null default now()
