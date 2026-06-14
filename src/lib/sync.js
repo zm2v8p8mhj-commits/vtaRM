@@ -59,7 +59,8 @@ export async function sincronizza() {
     .select('*, comuni(nome)')
   if (errPull) return { ok: false, motivo: errPull.message, inviati }
 
-  const localiMap = new Map((await db.getAlberi()).map((a) => [a.id, a]))
+  const tuttiLocali = await db.getAlberi()
+  const localiMap = new Map(tuttiLocali.map((a) => [a.id, a]))
   const daSalvare = []
   for (const r of remoti) {
     const locale = localiMap.get(r.id)
@@ -69,5 +70,17 @@ export async function sincronizza() {
   }
   await db.putAlberiBulk(daSalvare)
 
-  return { ok: true, inviati, ricevuti: remoti.length }
+  // riconciliazione cancellazioni: rimuove in locale i record già sincronizzati
+  // che non esistono più sul server (cancellati da un altro dispositivo).
+  // I record locali non ancora inviati (_synced === false) restano: sono in coda di upload.
+  const idRemoti = new Set(remoti.map((r) => r.id))
+  let rimossi = 0
+  for (const a of tuttiLocali) {
+    if (a._synced !== false && !idRemoti.has(a.id)) {
+      await db.deleteAlbero(a.id)
+      rimossi++
+    }
+  }
+
+  return { ok: true, inviati, ricevuti: remoti.length, rimossi }
 }

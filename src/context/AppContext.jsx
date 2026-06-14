@@ -162,8 +162,13 @@ export function AppProvider({ children }) {
 
   const eliminaAlbero = useCallback(
     async (id) => {
+      // prima dal server (così la cancellazione si propaga agli altri dispositivi
+      // alla loro prossima sincronizzazione), poi in locale
+      if (supabaseEnabled) {
+        const { error } = await supabase.from('alberi').delete().eq('id', id)
+        if (error) console.warn('Cancellazione remota fallita:', error.message)
+      }
       await db.deleteAlbero(id)
-      if (supabaseEnabled) await supabase.from('alberi').delete().eq('id', id)
       await ricaricaLocale()
     },
     [ricaricaLocale]
