@@ -12,7 +12,10 @@ import * as db from './db'
 function pulisciRecord(record) {
   const out = {}
   for (const [k, v] of Object.entries(record)) {
-    if (!k.startsWith('_') && k !== 'comune_nome') out[k] = v
+    if (k.startsWith('_') || k === 'comune_nome') continue
+    // stringa vuota -> null: le colonne date/real del DB rifiutano '' e farebbero
+    // fallire l'intero upsert (i campi non compilati restano semplicemente nulli)
+    out[k] = v === '' ? null : v
   }
   return out
 }
@@ -23,6 +26,7 @@ export async function sincronizza() {
   }
 
   let inviati = 0
+  const erroriPush = []
   const locali = await db.getAlberi()
 
   // --- PUSH ---
@@ -50,6 +54,7 @@ export async function sincronizza() {
       inviati++
     } else {
       console.warn('Sync push fallito per', albero.codice, error.message)
+      erroriPush.push(`${albero.codice || albero.id}: ${error.message}`)
     }
   }
 
@@ -82,5 +87,11 @@ export async function sincronizza() {
     }
   }
 
-  return { ok: true, inviati, ricevuti: remoti.length, rimossi }
+  return {
+    ok: erroriPush.length === 0,
+    inviati,
+    ricevuti: remoti.length,
+    rimossi,
+    motivo: erroriPush.length ? `Invio fallito per ${erroriPush.length} rilievi: ${erroriPush[0]}` : null,
+  }
 }
