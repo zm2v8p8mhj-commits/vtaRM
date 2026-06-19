@@ -109,8 +109,15 @@ export function AppProvider({ children }) {
     setSyncInfo({ inCorso: true, esito: null })
     const esito = await sincronizza()
     setSyncInfo({ inCorso: false, esito })
-    if (esito.ok) await ricaricaLocale()
+    await ricaricaLocale() // sempre, così url_foto/_synced si aggiornano anche dopo invii parziali
   }, [ricaricaLocale])
+
+  // Storage persistente: chiede al browser di NON sgomberare IndexedDB (su iOS
+  // i dati dei siti vengono altrimenti cancellati dopo inattività). Sulle PWA
+  // installate il permesso è quasi sempre concesso → i rilievi non si perdono.
+  useEffect(() => {
+    if (navigator.storage?.persist) navigator.storage.persist().catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!utente) return
@@ -124,8 +131,16 @@ export function AppProvider({ children }) {
       await caricaComuni()
       avviaSync()
     })()
+    // sincronizza al ritorno online e quando si riapre l'app (riporta in primo piano)
+    const alRitorno = () => {
+      if (document.visibilityState === 'visible') avviaSync()
+    }
     window.addEventListener('online', avviaSync)
-    return () => window.removeEventListener('online', avviaSync)
+    document.addEventListener('visibilitychange', alRitorno)
+    return () => {
+      window.removeEventListener('online', avviaSync)
+      document.removeEventListener('visibilitychange', alRitorno)
+    }
   }, [utente, ricaricaLocale, caricaComuni, avviaSync])
 
   const fotoDi = useCallback(
@@ -248,6 +263,7 @@ export function AppProvider({ children }) {
     rigeneraToken,
     syncInfo,
     avviaSync,
+    nonSincronizzati: alberi.filter((a) => a._synced === false).length,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

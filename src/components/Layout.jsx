@@ -9,7 +9,7 @@ const voci = [
 ]
 
 export default function Layout() {
-  const { utente, logout, supabaseEnabled, syncInfo, avviaSync } = useApp()
+  const { utente, logout, supabaseEnabled, syncInfo, avviaSync, nonSincronizzati } = useApp()
   const visibili = voci
 
   return (
@@ -43,10 +43,21 @@ export default function Layout() {
         {supabaseEnabled && (
           <button
             onClick={avviaSync}
-            title="Sincronizza con il server"
-            className="rounded-lg bg-green-700 px-2 py-1.5 text-xs hover:bg-green-600"
+            title={
+              nonSincronizzati > 0
+                ? `${nonSincronizzati} rilievi ancora solo sul dispositivo: tocca per sincronizzare`
+                : 'Tutto sincronizzato col server'
+            }
+            className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs ${
+              nonSincronizzati > 0 ? 'bg-amber-500 font-bold hover:bg-amber-600' : 'bg-green-700 hover:bg-green-600'
+            }`}
           >
             {syncInfo.inCorso ? '⏳' : '🔄'} Sync
+            {nonSincronizzati > 0 && (
+              <span className="rounded-full bg-white px-1.5 text-[10px] font-bold text-amber-700">
+                {nonSincronizzati}
+              </span>
+            )}
           </button>
         )}
         <button
