@@ -34,17 +34,25 @@ export async function sincronizza() {
     const foto = await db.getFotoByAlbero(albero.id)
     const urlFoto = [...(albero.url_foto || [])]
 
-    for (const f of foto.filter((f) => !f.synced)) {
+    // si iterano TUTTE le foto: quelle non caricate vengono inviate, ma l'URL
+    // pubblico viene aggiunto a url_foto anche per quelle già caricate, così il
+    // record resta sempre collegato alle sue immagini (il percorso è deterministico)
+    for (const f of foto) {
       // il file nel cloud porta il nome parlante (NAR-2026-008_01.jpg);
       // per le foto salvate prima della rinomina automatica resta l'id
       const path = `${albero.comune_id}/${albero.id}/${f.nome || `${f.id}.jpg`}`
-      const { error } = await supabase.storage
-        .from(FOTO_BUCKET)
-        .upload(path, f.blob, { contentType: f.blob.type || 'image/jpeg', upsert: true })
-      if (error) continue
+      if (!f.synced) {
+        const { error } = await supabase.storage
+          .from(FOTO_BUCKET)
+          .upload(path, f.blob, { contentType: f.blob.type || 'image/jpeg', upsert: true })
+        if (error) {
+          erroriPush.push(`foto ${path}: ${error.message}`)
+          continue
+        }
+        await db.putFoto({ ...f, synced: true })
+      }
       const { data } = supabase.storage.from(FOTO_BUCKET).getPublicUrl(path)
-      urlFoto.push(data.publicUrl)
-      await db.putFoto({ ...f, synced: true })
+      if (!urlFoto.includes(data.publicUrl)) urlFoto.push(data.publicUrl)
     }
 
     const record = pulisciRecord({ ...albero, url_foto: urlFoto })
