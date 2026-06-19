@@ -17,7 +17,15 @@ const LARGHEZZA = 210 - MARGINE * 2
 
 async function urlToDataURL(url) {
   try {
-    const blob = await (await fetch(url)).blob()
+    // i blob: locali si leggono direttamente; per le URL remote forziamo una
+    // richiesta CORS fresca (cache-buster) così non riusiamo l'eventuale copia
+    // "opaca" messa in cache dal service worker quando l'<img> del popup la carica
+    const fetchUrl = url.startsWith('blob:')
+      ? url
+      : `${url}${url.includes('?') ? '&' : '?'}pdf=${Date.now()}`
+    const resp = await fetch(fetchUrl, { mode: 'cors', cache: 'no-store' })
+    if (!resp.ok) return null
+    const blob = await resp.blob()
     return await new Promise((resolve, reject) => {
       const r = new FileReader()
       r.onload = () => resolve(r.result)
