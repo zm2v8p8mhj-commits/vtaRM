@@ -9,7 +9,7 @@ import CpcBadge from '../components/CpcBadge'
 const FILTRI_INIZIALI = { cpc: [...CPC_CLASSI], specie: '', comune: '', ricerca: '' }
 
 export default function MapPage() {
-  const { alberi, comuni, fotoDi } = useApp()
+  const { alberi, comuni, fotoDi, fotoDettagli } = useApp()
   const navigate = useNavigate()
   const [filtri, setFiltri] = useState(FILTRI_INIZIALI)
   // su telefono la sidebar parte chiusa e si apre sopra la mappa (overlay)
@@ -225,6 +225,7 @@ export default function MapPage() {
       <TreeMap
         alberi={filtrati}
         fotoDi={fotoDi}
+        fotoDettagli={fotoDettagli}
         onModifica={(albero) => navigate(`/rilievo/${albero.id}`)}
       />
 

@@ -79,6 +79,7 @@ create table public.alberi (
   data_ultimo_intervento          date,
   note_gestione                   text,
   url_foto                        jsonb not null default '[]',
+  foto_difetti                    jsonb not null default '{}',
   created_at                      timestamptz not null default now(),
   updated_at                      timestamptz not null default now()
 );

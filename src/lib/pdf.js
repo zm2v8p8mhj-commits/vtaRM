@@ -158,21 +158,34 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   if (albero.data_ultimo_intervento) riga('Ultimo intervento', new Date(albero.data_ultimo_intervento).toLocaleDateString('it-IT'))
   if (albero.note_gestione) riga('Note gestione', albero.note_gestione)
 
-  // Foto in coda alla scheda
-  const dataUrls = (await Promise.all(fotoUrls.slice(0, 4).map(urlToDataURL))).filter(Boolean)
-  if (dataUrls.length) {
+  // Foto in coda alla scheda, con didascalia del difetto quando presente.
+  // fotoUrls può contenere stringhe (url) o oggetti { url, caption }.
+  const items = fotoUrls.slice(0, 8).map((f) => (typeof f === 'string' ? { url: f, caption: '' } : f))
+  const conData = []
+  for (const it of items) {
+    const dataUrl = await urlToDataURL(it.url)
+    if (dataUrl) conData.push({ caption: it.caption || '', dataUrl })
+  }
+  if (conData.length) {
     titoloSezione('Documentazione fotografica')
-    let x = MARGINE + 2
-    for (const dataUrl of dataUrls) {
-      controllaPagina(64)
+    let col = 0
+    for (const it of conData) {
+      if (col === 0) controllaPagina(74)
+      const x = col === 0 ? MARGINE + 2 : MARGINE + 94
       try {
-        doc.addImage(dataUrl, 'JPEG', x, y, 84, 60, undefined, 'MEDIUM')
+        doc.addImage(it.dataUrl, 'JPEG', x, y, 84, 60, undefined, 'MEDIUM')
       } catch {
         continue
       }
-      x = x === MARGINE + 2 ? MARGINE + 94 : (y += 64, MARGINE + 2)
+      if (it.caption) {
+        doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(80)
+        doc.text(doc.splitTextToSize(it.caption, 84), x, y + 64)
+        doc.setTextColor(0)
+      }
+      if (col === 1) y += 72
+      col = col === 1 ? 0 : 1
     }
-    y += 64
+    if (col === 1) y += 72
   }
 
   // Piè di pagina su ogni pagina

@@ -80,6 +80,7 @@ function recordVuoto() {
     co2_kg_anno: '',
     valore_economico_eur: '',
     url_foto: [],
+    foto_difetti: {},
   }
 }
 
@@ -371,14 +372,16 @@ export default function SurveyPage() {
     }
   }
 
-  const aggiungiFoto = async (e) => {
+  // tag = null per le foto generali; "Distretto · Difetto" per quelle di un difetto
+  const aggiungiFoto = async (e, tag = null) => {
     const files = [...(e.target.files || [])]
     e.target.value = ''
     for (const f of files) {
       const blob = await comprimiFoto(f)
-      setNuoveFoto((prev) => [...prev, { blob, url: URL.createObjectURL(blob) }])
+      setNuoveFoto((prev) => [...prev, { blob, url: URL.createObjectURL(blob), tag }])
     }
   }
+  const rimuoviFoto = (url) => setNuoveFoto((prev) => prev.filter((f) => f.url !== url))
 
   // ----------------------------------------------------------- validazione
   // Tutti i campi del modello master sono obbligatori per garantire la
@@ -458,7 +461,7 @@ export default function SurveyPage() {
       note_gestione: r.note_gestione || (!isDesktop ? 'Da confermare in studio' : ''),
       comune_nome: comuni.find((c) => c.id === r.comune_id)?.nome,
     }
-    await salvaAlbero(record, nuoveFoto.map((f) => f.blob))
+    await salvaAlbero(record, nuoveFoto)
     setSalvato(true)
   }
 
@@ -519,6 +522,7 @@ export default function SurveyPage() {
                   {nome}
                 </label>
                 {sel && (
+                  <>
                   <div className="mt-1.5 flex flex-wrap gap-1 pl-6">
                     {GRAVITA.filter((g) => g.v > 0).map((g) => {
                       const attivo = (sel.gravita || 1) === g.v
@@ -540,6 +544,35 @@ export default function SurveyPage() {
                       )
                     })}
                   </div>
+                  <div className="mt-2 pl-6">
+                    <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-green-700">
+                      📷 Foto del difetto
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => aggiungiFoto(e, `${titolo} · ${nome}`)}
+                      />
+                    </label>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {nuoveFoto
+                        .filter((f) => f.tag === `${titolo} · ${nome}`)
+                        .map((f) => (
+                          <div key={f.url} className="relative">
+                            <img src={f.url} alt="" className="h-14 w-14 rounded object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => rimuoviFoto(f.url)}
+                              className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-red-600 text-[10px] font-bold leading-none text-white"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                  </>
                 )}
               </div>
             )
@@ -1271,15 +1304,15 @@ export default function SurveyPage() {
                     </figcaption>
                   </figure>
                 ))}
-                {nuoveFoto.map((f, i) => (
+                {nuoveFoto.map((f) => (
                   <figure key={f.url} className="relative w-24">
                     <img src={f.url} alt="" className="h-24 w-24 rounded-lg object-cover" />
-                    <figcaption className="mt-0.5 truncate text-center text-[10px] text-slate-400">
-                      {`${r.codice}_${String((r.url_foto?.length || 0) + numFotoLocali + i + 1).padStart(2, '0')}.jpg`}
+                    <figcaption className="mt-0.5 truncate text-center text-[10px] text-slate-400" title={f.tag || 'Foto generale'}>
+                      {f.tag || 'Foto generale'}
                     </figcaption>
                     <button
                       type="button"
-                      onClick={() => setNuoveFoto((prev) => prev.filter((_, j) => j !== i))}
+                      onClick={() => rimuoviFoto(f.url)}
                       className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-red-600 text-xs font-bold text-white"
                     >
                       ×

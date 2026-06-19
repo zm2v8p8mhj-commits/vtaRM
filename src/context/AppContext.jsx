@@ -11,6 +11,17 @@ import { COMUNI_DEMO } from '../lib/constants'
 const AppContext = createContext(null)
 export const useApp = () => useContext(AppContext)
 
+// "Fusto · Cavità" -> "fusto-cavita" per nomi file auto-descrittivi
+function slugDifetto(tag) {
+  return tag
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+}
+
 export function AppProvider({ children }) {
   const [utente, setUtente] = useState(null)
   const [autenticando, setAutenticando] = useState(true)
@@ -88,7 +99,7 @@ export function AppProvider({ children }) {
     for (const a of tutti) {
       const foto = await db.getFotoByAlbero(a.id)
       if (foto.length) {
-        mappa[a.id] = foto.map((f) => ({ id: f.id, url: URL.createObjectURL(f.blob) }))
+        mappa[a.id] = foto.map((f) => ({ id: f.id, url: URL.createObjectURL(f.blob), difetto: f.difetto || '' }))
       }
     }
     setFotoLocali(mappa)
@@ -151,24 +162,43 @@ export function AppProvider({ children }) {
     [fotoLocali]
   )
 
+  // come fotoDi ma con la didascalia del difetto: per le foto remote la prende
+  // dalla mappa foto_difetti (chiave = nome file), per le locali dal record foto
+  const fotoDettagli = useCallback(
+    (albero) => {
+      const mappa = albero.foto_difetti || {}
+      const nomeFile = (u) => decodeURIComponent((u.split('/').pop() || '').split('?')[0])
+      const remote = (albero.url_foto || []).map((u) => ({ url: u, caption: mappa[nomeFile(u)] || '' }))
+      const locali = (fotoLocali[albero.id] || []).map((f) => ({ url: f.url, caption: f.difetto || '' }))
+      return [...remote, ...locali]
+    },
+    [fotoLocali]
+  )
+
   const salvaAlbero = useCallback(
     async (record, nuoveFoto = []) => {
-      await db.putAlbero({ ...record, _synced: false })
-      // rinomina automatica: CODICE-ALBERO_01.jpg, _02.jpg… proseguendo la
-      // numerazione delle foto già presenti (remote + locali)
+      // numerazione progressiva proseguendo dalle foto già presenti
       let progressivo =
         (record.url_foto || []).length + (await db.getFotoByAlbero(record.id)).length
-      for (const blob of nuoveFoto) {
+      const fotoDifetti = { ...(record.foto_difetti || {}) }
+      for (const f of nuoveFoto) {
         progressivo += 1
+        const num = String(progressivo).padStart(2, '0')
+        // nel nome file mettiamo anche il difetto (archivio auto-descrittivo)
+        const suffisso = f.tag ? `_${slugDifetto(f.tag)}` : ''
+        const nome = `${record.codice}_${num}${suffisso}.jpg`
+        if (f.tag) fotoDifetti[nome] = f.tag
         await db.putFoto({
           id: crypto.randomUUID(),
           albero_id: record.id,
-          nome: `${record.codice}_${String(progressivo).padStart(2, '0')}.jpg`,
-          blob,
+          nome,
+          difetto: f.tag || '',
+          blob: f.blob,
           created_at: new Date().toISOString(),
           synced: false,
         })
       }
+      await db.putAlbero({ ...record, foto_difetti: fotoDifetti, _synced: false })
       await ricaricaLocale()
       avviaSync()
     },
@@ -256,6 +286,7 @@ export function AppProvider({ children }) {
     comuni,
     alberi,
     fotoDi,
+    fotoDettagli,
     salvaAlbero,
     eliminaAlbero,
     importaAlberi,

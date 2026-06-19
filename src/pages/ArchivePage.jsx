@@ -8,7 +8,7 @@ import { generaSchedaPDF } from '../lib/pdf'
 import CpcBadge from '../components/CpcBadge'
 
 export default function ArchivePage() {
-  const { alberi, comuni, fotoDi, eliminaAlbero, importaAlberi, supabaseEnabled } = useApp()
+  const { alberi, comuni, fotoDi, fotoDettagli, eliminaAlbero, importaAlberi, supabaseEnabled } = useApp()
   const navigate = useNavigate()
   const [filtroCpc, setFiltroCpc] = useState('')
   const [filtroComune, setFiltroComune] = useState('')
@@ -138,7 +138,7 @@ export default function ArchivePage() {
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-1.5">
                         <button title="Scheda PDF" className="rounded-lg bg-slate-100 px-2 py-1 hover:bg-slate-200"
-                          onClick={() => generaSchedaPDF(a, fotoDi(a), a.comune_nome || '')}>📄</button>
+                          onClick={() => generaSchedaPDF(a, fotoDettagli(a), a.comune_nome || '')}>📄</button>
                         <button title="Modifica" className="rounded-lg bg-slate-100 px-2 py-1 hover:bg-slate-200"
                           onClick={() => navigate(`/rilievo/${a.id}`)}>✏️</button>
                         <button title="Elimina" className="rounded-lg bg-red-50 px-2 py-1 text-red-700 hover:bg-red-100"

@@ -6,7 +6,7 @@ import { generaSchedaPDF } from '../lib/pdf'
 
 // Mappa Leaflet condivisa tra cruscotto admin e mappa pubblica dei comuni.
 // onModifica è presente solo nel cruscotto admin.
-export default function TreeMap({ alberi, fotoDi, nomeComune = '', onModifica }) {
+export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '', onModifica }) {
   const mapRef = useRef(null)
   const mapEl = useRef(null)
   const markersRef = useRef(null)
@@ -96,7 +96,11 @@ export default function TreeMap({ alberi, fotoDi, nomeComune = '', onModifica })
         </div>
       </div>`
     div.querySelector('[data-azione="pdf"]').onclick = () =>
-      generaSchedaPDF(albero, foto, albero.comune_nome || nomeComune || '')
+      generaSchedaPDF(
+        albero,
+        fotoDettagli ? fotoDettagli(albero) : foto,
+        albero.comune_nome || nomeComune || ''
+      )
     const btnMod = div.querySelector('[data-azione="modifica"]')
     if (btnMod) btnMod.onclick = () => onModifica(albero)
     return div

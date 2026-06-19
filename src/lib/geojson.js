@@ -17,7 +17,7 @@ const CAMPI_PROPRIETA = [
   'mitigazione_bersaglio', 'urgenza_mitigazione',
   'co2_stoccata_kg', 'canopy_cover_m2', 'valore_economico_eur',
   'data_ultimo_intervento', 'note_gestione',
-  'url_foto',
+  'url_foto', 'foto_difetti',
 ]
 
 export function alberiToGeoJSON(alberi) {

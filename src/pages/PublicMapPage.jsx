@@ -59,6 +59,12 @@ export default function PublicMapPage() {
   }, [token])
 
   const fotoDi = (albero) => [...(albero.url_foto || []), ...(fotoLocali[albero.id] || [])]
+  // foto con didascalia del difetto per la scheda PDF (mappa pubblica = solo dati remoti)
+  const fotoDettagli = (albero) => {
+    const mappa = albero.foto_difetti || {}
+    const nomeFile = (u) => decodeURIComponent((u.split('/').pop() || '').split('?')[0])
+    return (albero.url_foto || []).map((u) => ({ url: u, caption: mappa[nomeFile(u)] || '' }))
+  }
 
   const specieDisponibili = useMemo(
     () => [...new Set(alberi.map((a) => a.specie_botanica).filter(Boolean))].sort(),
@@ -236,7 +242,7 @@ export default function PublicMapPage() {
           </div>
         </aside>
 
-        <TreeMap alberi={filtrati} fotoDi={fotoDi} nomeComune={comune.nome} />
+        <TreeMap alberi={filtrati} fotoDi={fotoDi} fotoDettagli={fotoDettagli} nomeComune={comune.nome} />
       </div>
     </div>
   )
