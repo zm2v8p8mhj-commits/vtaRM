@@ -41,9 +41,15 @@ function hexToRgb(hex) {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 }
 
-// Mini-mappa satellitare (Esri World Imagery) centrata sull'albero, con marker.
-// Compone le tile in un canvas e restituisce un dataURL JPEG. Best-effort:
-// se offline o tile mancanti torna null (la scheda viene fatta senza mappa).
+// Mini-mappa IBRIDA (Esri World Imagery + strade ed etichette) centrata
+// sull'albero, con marker. Compone le tile in un canvas e restituisce un
+// dataURL JPEG. Best-effort: se offline o tile mancanti torna null.
+const LAYER_MAPPA = [
+  'World_Imagery/MapServer', // base satellitare (opaca)
+  'Reference/World_Transportation/MapServer', // strade + etichette stradali
+  'Reference/World_Boundaries_and_Places/MapServer', // confini e toponimi
+]
+
 export async function mappaSatellitareDataURL(lat, lng, zoom = 19, size = 320) {
   try {
     const n = 2 ** zoom
@@ -62,13 +68,16 @@ export async function mappaSatellitareDataURL(lat, lng, zoom = 19, size = 320) {
     canvas.height = size
     const ctx = canvas.getContext('2d')
 
-    for (let tx = txMin; tx <= txMax; tx++) {
-      for (let ty = tyMin; ty <= tyMax; ty++) {
-        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}?p=${Date.now()}`
-        const resp = await fetch(url, { mode: 'cors', cache: 'no-store' })
-        if (!resp.ok) continue
-        const bitmap = await createImageBitmap(await resp.blob())
-        ctx.drawImage(bitmap, tx * 256 - left, ty * 256 - top)
+    // satellite + overlay di riferimento, disegnati in ordine (uno sopra l'altro)
+    for (const layer of LAYER_MAPPA) {
+      for (let tx = txMin; tx <= txMax; tx++) {
+        for (let ty = tyMin; ty <= tyMax; ty++) {
+          const url = `https://server.arcgisonline.com/ArcGIS/rest/services/${layer}/tile/${zoom}/${ty}/${tx}?p=${Date.now()}`
+          const resp = await fetch(url, { mode: 'cors', cache: 'no-store' })
+          if (!resp.ok) continue
+          const bitmap = await createImageBitmap(await resp.blob())
+          ctx.drawImage(bitmap, tx * 256 - left, ty * 256 - top)
+        }
       }
     }
 
@@ -165,7 +174,7 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
       doc.setDrawColor(150)
       doc.rect(mapX, yTop - 2, MAP_SIZE, MAP_SIZE)
       doc.setFont('helvetica', 'normal').setFontSize(6.5).setTextColor(130)
-      doc.text('Esri World Imagery', mapX + MAP_SIZE, yTop - 2 + MAP_SIZE + 3, { align: 'right' })
+      doc.text('Esri – ibrida', mapX + MAP_SIZE, yTop - 2 + MAP_SIZE + 3, { align: 'right' })
       doc.setTextColor(0)
     }
   }
