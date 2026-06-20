@@ -99,7 +99,7 @@ export function AppProvider({ children }) {
     for (const a of tutti) {
       const foto = await db.getFotoByAlbero(a.id)
       if (foto.length) {
-        mappa[a.id] = foto.map((f) => ({ id: f.id, url: URL.createObjectURL(f.blob), difetto: f.difetto || '' }))
+        mappa[a.id] = foto.map((f) => ({ id: f.id, url: URL.createObjectURL(f.blob), difetto: f.difetto || '', nome: f.nome || '' }))
       }
     }
     setFotoLocali(mappa)
@@ -168,8 +168,8 @@ export function AppProvider({ children }) {
     (albero) => {
       const mappa = albero.foto_difetti || {}
       const nomeFile = (u) => decodeURIComponent((u.split('/').pop() || '').split('?')[0])
-      const remote = (albero.url_foto || []).map((u) => ({ url: u, caption: mappa[nomeFile(u)] || '' }))
-      const locali = (fotoLocali[albero.id] || []).map((f) => ({ url: f.url, caption: f.difetto || '' }))
+      const remote = (albero.url_foto || []).map((u) => ({ url: u, caption: mappa[nomeFile(u)] || '', nome: nomeFile(u) }))
+      const locali = (fotoLocali[albero.id] || []).map((f) => ({ url: f.url, caption: f.difetto || '', nome: f.nome || '' }))
       return [...remote, ...locali]
     },
     [fotoLocali]

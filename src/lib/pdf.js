@@ -171,13 +171,16 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   // Foto in coda alla scheda: grandi e a piena larghezza (≈2 per pagina), con
   // proporzioni reali e qualità massima, didascalia del difetto se presente.
   // fotoUrls può contenere stringhe (url) o oggetti { url, caption }.
-  const items = fotoUrls.slice(0, 12).map((f) => (typeof f === 'string' ? { url: f, caption: '' } : f))
+  const baseName = (u) => decodeURIComponent((u.split('/').pop() || '').split('?')[0])
+  const items = fotoUrls.slice(0, 12).map((f) =>
+    typeof f === 'string' ? { url: f, caption: '', nome: baseName(f) } : { ...f, nome: f.nome || baseName(f.url) }
+  )
   const conData = []
   for (const it of items) {
     const dataUrl = await urlToDataURL(it.url)
     if (!dataUrl) continue
     const dim = await dimensioniImg(dataUrl)
-    conData.push({ caption: it.caption || '', dataUrl, ...dim })
+    conData.push({ caption: it.caption || '', nome: it.nome || '', dataUrl, ...dim })
   }
   if (conData.length) {
     titoloSezione('Documentazione fotografica')
@@ -189,7 +192,7 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
         h = MAX_H
         w = (h * it.w) / it.h
       }
-      controllaPagina(h + 9)
+      controllaPagina(h + 14)
       const x = MARGINE + (LARGHEZZA - w) / 2 // centrata
       try {
         doc.addImage(it.dataUrl, 'JPEG', x, y, w, h, undefined, 'SLOW')
@@ -201,7 +204,13 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
         doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(22, 101, 52)
         doc.text(doc.splitTextToSize(it.caption, LARGHEZZA), MARGINE + 2, y + 3)
         doc.setTextColor(0)
-        y += 5
+        y += 4.5
+      }
+      if (it.nome) {
+        doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(120)
+        doc.text(it.nome, MARGINE + 2, y + 3)
+        doc.setTextColor(0)
+        y += 4
       }
       y += 4
     }

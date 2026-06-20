@@ -63,7 +63,7 @@ export default function PublicMapPage() {
   const fotoDettagli = (albero) => {
     const mappa = albero.foto_difetti || {}
     const nomeFile = (u) => decodeURIComponent((u.split('/').pop() || '').split('?')[0])
-    return (albero.url_foto || []).map((u) => ({ url: u, caption: mappa[nomeFile(u)] || '' }))
+    return (albero.url_foto || []).map((u) => ({ url: u, caption: mappa[nomeFile(u)] || '', nome: nomeFile(u) }))
   }
 
   const specieDisponibili = useMemo(
