@@ -50,6 +50,20 @@ const LAYER_MAPPA = [
   'Reference/World_Boundaries_and_Places/MapServer', // confini e toponimi
 ]
 
+async function caricaTile(url, msTimeout = 5000) {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), msTimeout)
+  try {
+    const resp = await fetch(url, { mode: 'cors', cache: 'no-store', signal: ctrl.signal })
+    if (!resp.ok) return null
+    return await createImageBitmap(await resp.blob())
+  } catch {
+    return null
+  } finally {
+    clearTimeout(t)
+  }
+}
+
 export async function mappaSatellitareDataURL(lat, lng, zoom = 19, size = 320) {
   try {
     const n = 2 ** zoom
@@ -68,18 +82,23 @@ export async function mappaSatellitareDataURL(lat, lng, zoom = 19, size = 320) {
     canvas.height = size
     const ctx = canvas.getContext('2d')
 
-    // satellite + overlay di riferimento, disegnati in ordine (uno sopra l'altro)
-    for (const layer of LAYER_MAPPA) {
+    // tutte le tile (satellite + overlay) scaricate IN PARALLELO con timeout,
+    // poi disegnate nell'ordine dei layer (uno sopra l'altro)
+    const richieste = []
+    LAYER_MAPPA.forEach((layer, li) => {
       for (let tx = txMin; tx <= txMax; tx++) {
         for (let ty = tyMin; ty <= tyMax; ty++) {
           const url = `https://server.arcgisonline.com/ArcGIS/rest/services/${layer}/tile/${zoom}/${ty}/${tx}?p=${Date.now()}`
-          const resp = await fetch(url, { mode: 'cors', cache: 'no-store' })
-          if (!resp.ok) continue
-          const bitmap = await createImageBitmap(await resp.blob())
-          ctx.drawImage(bitmap, tx * 256 - left, ty * 256 - top)
+          richieste.push(
+            caricaTile(url).then((bitmap) => ({ bitmap, li, dx: tx * 256 - left, dy: ty * 256 - top }))
+          )
         }
       }
-    }
+    })
+    const risultati = (await Promise.all(richieste)).filter((r) => r.bitmap)
+    if (!risultati.length) return null // nessuna tile: scheda senza mappa
+    risultati.sort((a, b) => a.li - b.li)
+    for (const r of risultati) ctx.drawImage(r.bitmap, r.dx, r.dy)
 
     // marker al centro (pin rosso con bordo bianco)
     const cx = size / 2
