@@ -105,20 +105,21 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
   if (prioritari.length) {
     titoloSezione('Interventi prioritari (urgenti)', [185, 28, 28])
 
-    // nota: cosa deve fare la committenza per la messa in sicurezza
+    // nota cortese: cosa conviene fare alla committenza per la messa in sicurezza
     const nota =
-      'La committenza è tenuta a mettere in sicurezza senza indugio gli esemplari elencati: ' +
-      'interdire o transennare l\'area di pertinenza e dare corso agli interventi prescritti nei ' +
-      'tempi indicati. Fino all\'attuazione delle misure permane una condizione di rischio per ' +
-      'persone e cose, di cui la committenza è resa edotta con il presente report.'
+      'Per gli esemplari qui segnalati si suggerisce di valutare, in via cautelativa e nei tempi ' +
+      'indicati, le opportune misure di messa in sicurezza dell\'area (ad esempio la delimitazione ' +
+      'o il transennamento della zona di pertinenza) e di programmare gli interventi proposti ' +
+      'secondo le priorità riportate. Lo scrivente resta a disposizione per concordare insieme ' +
+      'modalità e tempi più idonei.'
     const righeNota = doc.splitTextToSize(nota, LARGHEZZA - 6)
     const hNota = righeNota.length * 4.2 + 5
     controllaPagina(hNota + 2)
-    doc.setFillColor(254, 242, 242)
-    doc.setDrawColor(220, 38, 38)
+    doc.setFillColor(255, 251, 235)
+    doc.setDrawColor(217, 119, 6)
     doc.roundedRect(MARGINE, y - 2, LARGHEZZA, hNota, 1.5, 1.5, 'FD')
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(153, 27, 27)
-    doc.text('AZIONE RICHIESTA ALLA COMMITTENZA', MARGINE + 3, y + 2.5)
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(146, 64, 14)
+    doc.text('Nota per la committenza – messa in sicurezza', MARGINE + 3, y + 2.5)
     doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(60)
     doc.text(righeNota, MARGINE + 3, y + 7)
     doc.setTextColor(0)
