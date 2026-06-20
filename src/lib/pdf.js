@@ -15,7 +15,7 @@ const DISTRETTI_PDF = [
 const MARGINE = 14
 const LARGHEZZA = 210 - MARGINE * 2
 
-async function urlToDataURL(url) {
+export async function urlToDataURL(url) {
   try {
     // i blob: locali si leggono direttamente; per le URL remote forziamo una
     // richiesta CORS fresca (cache-buster) così non riusiamo l'eventuale copia
@@ -42,7 +42,7 @@ function hexToRgb(hex) {
 }
 
 // dimensioni reali dell'immagine (per mantenere le proporzioni nel PDF)
-function dimensioniImg(dataUrl) {
+export function dimensioniImg(dataUrl) {
   return new Promise((resolve) => {
     const img = new Image()
     img.onload = () => resolve({ w: img.naturalWidth || 4, h: img.naturalHeight || 3 })

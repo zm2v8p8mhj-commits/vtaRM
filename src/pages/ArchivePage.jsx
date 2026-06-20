@@ -5,6 +5,7 @@ import { CPC_CLASSI } from '../lib/constants'
 import { downloadGeoJSON, parseGeoJSON } from '../lib/geojson'
 import { esportaExcel } from '../lib/excel'
 import { generaSchedaPDF } from '../lib/pdf'
+import { generaReport, isPrioritario } from '../lib/report'
 import CpcBadge from '../components/CpcBadge'
 
 export default function ArchivePage() {
@@ -15,6 +16,11 @@ export default function ArchivePage() {
   const [soloSenzaFoto, setSoloSenzaFoto] = useState(false)
   const [messaggio, setMessaggio] = useState('')
   const fileRef = useRef(null)
+  // report di periodo
+  const [repComune, setRepComune] = useState('')
+  const [repDa, setRepDa] = useState('')
+  const [repA, setRepA] = useState('')
+  const [repInCorso, setRepInCorso] = useState(false)
 
   const filtrati = useMemo(
     () =>
@@ -57,6 +63,37 @@ export default function ArchivePage() {
   const esportaXlsx = () =>
     esportaExcel(filtrati, comuni, (a) => fotoDi(a).length, nomeExport())
 
+  // alberi del committente scelto nell'intervallo di date (estremi inclusi)
+  const alberiReport = useMemo(() => {
+    const da = repDa ? new Date(repDa + 'T00:00:00') : null
+    const a = repA ? new Date(repA + 'T23:59:59') : null
+    return alberi
+      .filter((x) => {
+        if (repComune && x.comune_id !== repComune) return false
+        const d = x.data_rilievo ? new Date(x.data_rilievo) : null
+        if (da && (!d || d < da)) return false
+        if (a && (!d || d > a)) return false
+        return true
+      })
+      .sort((x, z) => new Date(x.data_rilievo) - new Date(z.data_rilievo))
+  }, [alberi, repComune, repDa, repA])
+
+  const nPrioritari = useMemo(() => alberiReport.filter(isPrioritario).length, [alberiReport])
+
+  const creaReport = async () => {
+    setRepInCorso(true)
+    try {
+      await generaReport(alberiReport, {
+        comuneNome: comuni.find((c) => c.id === repComune)?.nome || 'Tutti i committenti',
+        dataDa: repDa,
+        dataA: repA,
+        fotoDettagli,
+      })
+    } finally {
+      setRepInCorso(false)
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl space-y-4 p-4">
@@ -89,6 +126,45 @@ export default function ArchivePage() {
             {messaggio}
           </p>
         )}
+
+        {/* ---------------------------------------- Report di periodo */}
+        <div className="card border-green-200 bg-green-50/40">
+          <h3 className="font-bold text-green-900">📄 Report di periodo per il committente</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Genera un PDF dei rilievi eseguiti in un intervallo di date, con in evidenza gli
+            interventi prioritari da far eseguire subito — da inviare al committente senza
+            attendere la consegna dell'intero lavoro.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Committente</label>
+              <select className="field max-w-56" value={repComune} onChange={(e) => setRepComune(e.target.value)}>
+                <option value="">Tutti i committenti</option>
+                {comuni.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Dal</label>
+              <input type="date" className="field" value={repDa} onChange={(e) => setRepDa(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Al</label>
+              <input type="date" className="field" value={repA} onChange={(e) => setRepA(e.target.value)} />
+            </div>
+            <button className="btn-primary" disabled={repInCorso || alberiReport.length === 0} onClick={creaReport}>
+              {repInCorso ? 'Generazione…' : `📄 Genera report (${alberiReport.length})`}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            {alberiReport.length} alberi nel periodo selezionato ·{' '}
+            <span className={nPrioritari ? 'font-semibold text-red-700' : ''}>
+              {nPrioritari} interventi prioritari
+            </span>
+            {repDa || repA ? '' : ' · nessuna data = tutti i rilievi'}
+          </p>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <select className="field max-w-44" value={filtroCpc} onChange={(e) => setFiltroCpc(e.target.value)}>
