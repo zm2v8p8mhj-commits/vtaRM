@@ -41,6 +41,59 @@ function hexToRgb(hex) {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 }
 
+// Mini-mappa satellitare (Esri World Imagery) centrata sull'albero, con marker.
+// Compone le tile in un canvas e restituisce un dataURL JPEG. Best-effort:
+// se offline o tile mancanti torna null (la scheda viene fatta senza mappa).
+export async function mappaSatellitareDataURL(lat, lng, zoom = 19, size = 320) {
+  try {
+    const n = 2 ** zoom
+    const latRad = (lat * Math.PI) / 180
+    const gx = ((lng + 180) / 360) * n * 256 // pixel globale X
+    const gy = ((1 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2) * n * 256
+    const left = gx - size / 2
+    const top = gy - size / 2
+    const txMin = Math.floor(left / 256)
+    const txMax = Math.floor((left + size - 1) / 256)
+    const tyMin = Math.floor(top / 256)
+    const tyMax = Math.floor((top + size - 1) / 256)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    for (let tx = txMin; tx <= txMax; tx++) {
+      for (let ty = tyMin; ty <= tyMax; ty++) {
+        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}?p=${Date.now()}`
+        const resp = await fetch(url, { mode: 'cors', cache: 'no-store' })
+        if (!resp.ok) continue
+        const bitmap = await createImageBitmap(await resp.blob())
+        ctx.drawImage(bitmap, tx * 256 - left, ty * 256 - top)
+      }
+    }
+
+    // marker al centro (pin rosso con bordo bianco)
+    const cx = size / 2
+    const cy = size / 2
+    ctx.beginPath()
+    ctx.arc(cx, cy, 9, 0, Math.PI * 2)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2)
+    ctx.fillStyle = '#dc2626'
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(cx, cy, 2, 0, Math.PI * 2)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+
+    return canvas.toDataURL('image/jpeg', 0.85)
+  } catch {
+    return null
+  }
+}
+
 // dimensioni reali dell'immagine (per mantenere le proporzioni nel PDF)
 export function dimensioniImg(dataUrl) {
   return new Promise((resolve) => {
@@ -97,23 +150,41 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   }
 
   intestazione()
-
-  // Riquadro CPC ben visibile
   const meta = CPC_META[albero.cpc] || CPC_META.A
+  const yTop = y
+
+  // Mini-mappa satellitare con il puntino dell'albero, in alto a destra
+  const MAP_SIZE = 44
+  const mapX = 210 - MARGINE - MAP_SIZE
+  if (albero.lat != null && albero.lng != null) {
+    const mapData = await mappaSatellitareDataURL(albero.lat, albero.lng)
+    if (mapData) {
+      try {
+        doc.addImage(mapData, 'JPEG', mapX, yTop - 2, MAP_SIZE, MAP_SIZE, undefined, 'SLOW')
+      } catch { /* ignora */ }
+      doc.setDrawColor(150)
+      doc.rect(mapX, yTop - 2, MAP_SIZE, MAP_SIZE)
+      doc.setFont('helvetica', 'normal').setFontSize(6.5).setTextColor(130)
+      doc.text('Esri World Imagery', mapX + MAP_SIZE, yTop - 2 + MAP_SIZE + 3, { align: 'right' })
+      doc.setTextColor(0)
+    }
+  }
+
+  // Codice, specie e riquadro CPC a sinistra
+  doc.setFont('helvetica', 'bold').setFontSize(16)
+  doc.text(albero.codice || '—', MARGINE, yTop + 6)
+  doc.setFont('helvetica', 'italic').setFontSize(11)
+  doc.text(albero.specie_botanica || '', MARGINE, yTop + 13)
   const [r, g, b] = hexToRgb(meta.color)
   doc.setFillColor(r, g, b)
-  doc.roundedRect(140, y - 2, 56, 16, 2, 2, 'F')
-  doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(9)
-  doc.text('CLASSE CPC', 168, y + 3, { align: 'center' })
-  doc.setFontSize(13)
-  doc.text(meta.label, 168, y + 9.5, { align: 'center' })
+  doc.roundedRect(MARGINE, yTop + 18, 56, 14, 2, 2, 'F')
+  doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(8.5)
+  doc.text('CLASSE CPC', MARGINE + 28, yTop + 23, { align: 'center' })
+  doc.setFontSize(12)
+  doc.text(meta.label, MARGINE + 28, yTop + 29, { align: 'center' })
   doc.setTextColor(0)
 
-  doc.setFont('helvetica', 'bold').setFontSize(16)
-  doc.text(albero.codice || '—', MARGINE, y + 4)
-  doc.setFont('helvetica', 'italic').setFontSize(11)
-  doc.text(albero.specie_botanica || '', MARGINE, y + 11)
-  y += 22
+  y = yTop + 46
 
   titoloSezione('1. Identificazione e localizzazione')
   riga('Data rilievo', albero.data_rilievo ? new Date(albero.data_rilievo).toLocaleString('it-IT') : '—')
