@@ -185,7 +185,9 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   const MAP_SIZE = 44
   const mapX = 210 - MARGINE - MAP_SIZE
   if (albero.lat != null && albero.lng != null) {
-    const mapData = await mappaSatellitareDataURL(albero.lat, albero.lng)
+    // zoom 17: inquadratura che mostra il nome della via (a zoom più alti le
+    // etichette stradali non rientrano nel ritaglio)
+    const mapData = await mappaSatellitareDataURL(albero.lat, albero.lng, 17, 384)
     if (mapData) {
       try {
         doc.addImage(mapData, 'JPEG', mapX, yTop - 2, MAP_SIZE, MAP_SIZE, undefined, 'SLOW')
