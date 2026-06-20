@@ -28,6 +28,26 @@ body {
   width: 260px !important;
 }
 
+/* etichetta col numero accanto al pallino dell'albero */
+.etichetta-albero.leaflet-tooltip {
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  box-shadow: none;
+  color: #111827;
+  font-weight: 700;
+  font-size: 10px;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.etichetta-albero.leaflet-tooltip::before {
+  display: none; /* nasconde la freccetta del tooltip */
+}
+.nascondi-etichette .etichetta-albero {
+  display: none;
+}
+
 /* Campi form coerenti in tutta l'app */
 .field {
   @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm

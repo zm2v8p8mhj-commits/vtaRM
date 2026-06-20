@@ -34,6 +34,13 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
     markersRef.current = L.layerGroup().addTo(map)
     mapRef.current = map
 
+    // etichette accanto ai pallini visibili solo da zoom 16 in su (meno confusione)
+    const aggiornaEtichette = () => {
+      mapEl.current?.classList.toggle('nascondi-etichette', map.getZoom() < 16)
+    }
+    aggiornaEtichette()
+    map.on('zoomend', aggiornaEtichette)
+
     const resizeObserver = new ResizeObserver(() => {
       map.invalidateSize({ animate: false })
     })
@@ -61,7 +68,16 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
         fillOpacity: 0.95,
       })
       marker.bindPopup(() => creaPopup(albero), { maxWidth: 280 })
-      marker.bindTooltip(`${albero.codice} – ${albero.specie_botanica}`, { direction: 'top' })
+      // etichetta permanente: ultime 3 cifre del codice (es. NAR-2026-008 -> 008)
+      const etichetta = (albero.codice || '').split('-').pop()
+      if (etichetta) {
+        marker.bindTooltip(etichetta, {
+          permanent: true,
+          direction: 'right',
+          offset: [7, 0],
+          className: 'etichetta-albero',
+        })
+      }
       gruppo.addLayer(marker)
     }
 
