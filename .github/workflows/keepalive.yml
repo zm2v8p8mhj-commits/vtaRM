@@ -1,0 +1,25 @@
+# Mantiene "sveglio" il progetto Supabase free: due ping a settimana al database,
+# così non va mai in pausa per inattività (~7 giorni). Gira su GitHub, gratis,
+# indipendente dal PC dell'utente.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '17 6 * * 1,4' # lun e gio alle 06:17 UTC (gap max ~3-4 giorni)
+  workflow_dispatch: # avvio manuale dalla scheda Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tocca il database (RPC pubblica)
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/rpc/mappa_pubblica" \
+            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"token":"00000000-0000-0000-0000-000000000000"}')
+          echo "Risposta Supabase: $code"
+          # 200 (ok) o anche 4xx vanno bene: l'importante è aver contattato il DB
+          if [ "$code" = "000" ]; then echo "Nessuna risposta dal server"; exit 1; fi
