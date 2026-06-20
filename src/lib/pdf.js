@@ -41,6 +41,16 @@ function hexToRgb(hex) {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 }
 
+// dimensioni reali dell'immagine (per mantenere le proporzioni nel PDF)
+function dimensioniImg(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve({ w: img.naturalWidth || 4, h: img.naturalHeight || 3 })
+    img.onerror = () => resolve({ w: 4, h: 3 })
+    img.src = dataUrl
+  })
+}
+
 export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let y = 16
@@ -158,34 +168,43 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   if (albero.data_ultimo_intervento) riga('Ultimo intervento', new Date(albero.data_ultimo_intervento).toLocaleDateString('it-IT'))
   if (albero.note_gestione) riga('Note gestione', albero.note_gestione)
 
-  // Foto in coda alla scheda, con didascalia del difetto quando presente.
+  // Foto in coda alla scheda: grandi e a piena larghezza (≈2 per pagina), con
+  // proporzioni reali e qualità massima, didascalia del difetto se presente.
   // fotoUrls può contenere stringhe (url) o oggetti { url, caption }.
-  const items = fotoUrls.slice(0, 8).map((f) => (typeof f === 'string' ? { url: f, caption: '' } : f))
+  const items = fotoUrls.slice(0, 12).map((f) => (typeof f === 'string' ? { url: f, caption: '' } : f))
   const conData = []
   for (const it of items) {
     const dataUrl = await urlToDataURL(it.url)
-    if (dataUrl) conData.push({ caption: it.caption || '', dataUrl })
+    if (!dataUrl) continue
+    const dim = await dimensioniImg(dataUrl)
+    conData.push({ caption: it.caption || '', dataUrl, ...dim })
   }
   if (conData.length) {
     titoloSezione('Documentazione fotografica')
-    let col = 0
+    const MAX_H = 112 // mm: con la didascalia ne stanno ~2 per pagina
     for (const it of conData) {
-      if (col === 0) controllaPagina(74)
-      const x = col === 0 ? MARGINE + 2 : MARGINE + 94
+      let w = LARGHEZZA
+      let h = (w * it.h) / it.w
+      if (h > MAX_H) {
+        h = MAX_H
+        w = (h * it.w) / it.h
+      }
+      controllaPagina(h + 9)
+      const x = MARGINE + (LARGHEZZA - w) / 2 // centrata
       try {
-        doc.addImage(it.dataUrl, 'JPEG', x, y, 84, 60, undefined, 'MEDIUM')
+        doc.addImage(it.dataUrl, 'JPEG', x, y, w, h, undefined, 'SLOW')
       } catch {
         continue
       }
+      y += h + 1.5
       if (it.caption) {
-        doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(80)
-        doc.text(doc.splitTextToSize(it.caption, 84), x, y + 64)
+        doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(22, 101, 52)
+        doc.text(doc.splitTextToSize(it.caption, LARGHEZZA), MARGINE + 2, y + 3)
         doc.setTextColor(0)
+        y += 5
       }
-      if (col === 1) y += 72
-      col = col === 1 ? 0 : 1
+      y += 4
     }
-    if (col === 1) y += 72
   }
 
   // Piè di pagina su ogni pagina

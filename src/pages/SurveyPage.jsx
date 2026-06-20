@@ -357,7 +357,7 @@ export default function SurveyPage() {
   // Le foto vengono ridimensionate e ricompresse sul dispositivo (max 1600 px,
   // JPEG ~80%): da ~5-8 MB a ~300-500 KB, senza perdita visibile ai fini VTA.
   // Meno spazio in IndexedDB, sync più veloce, PDF più leggeri.
-  const comprimiFoto = async (file, maxLato = 1600, qualita = 0.82) => {
+  const comprimiFoto = async (file, maxLato = 2000, qualita = 0.85) => {
     try {
       const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
       const scala = Math.min(1, maxLato / Math.max(bitmap.width, bitmap.height))
