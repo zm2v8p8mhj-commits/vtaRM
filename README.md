@@ -27,7 +27,8 @@ App unica "field-to-office" per il censimento VTA e la consultazione comunale:
 | A | Trascurabile | 🟢 verde | 24 mesi |
 | B | Bassa | 🟡 giallo | 12 mesi |
 | C | Moderata | 🟠 arancione | 6 mesi |
-| D | Elevata/Estrema | 🔴 rosso | 2 mesi / intervento |
+| C/D | Elevata | 🟧 arancione scuro | 3 mesi |
+| D | Estrema | 🔴 rosso | 2 mesi / intervento |
 
 ## Avvio rapido (modalità demo, senza backend)
 

@@ -4,8 +4,9 @@ import { CPC_META, GRAVITA, DISTRETTI, DISTRETTI_KEYS } from './constants'
 // VTA Livello 1 (triage visuale speditivo). La CPC dipende dai DIFETTI
 // dell'albero (i bersagli entrano nel rischio, non nella propensione) e si
 // determina con la regola del "valore peggiore": si prende la gravità massima
-// tra i tre distretti anatomici (radici, fusto, chioma) e la si traduce nella
-// classe corrispondente. La decisione finale resta al valutatore.
+// tra i difetti di tutti i distretti anatomici (zolla, colletto, fusto,
+// castello, branche, chioma; "radici" è mantenuto per i record storici) e la si
+// traduce nella classe corrispondente. La decisione finale resta al valutatore.
 // ----------------------------------------------------------------------------
 
 // Normalizza i difetti di un distretto in [{ nome, gravita }]:

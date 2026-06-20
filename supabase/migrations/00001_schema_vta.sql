@@ -31,6 +31,7 @@ create table public.alberi (
   lat                             double precision not null,
   lng                             double precision not null,
   localizzazione                  text,
+  indirizzo                       text,
   rilevatore                      text,
   specie_botanica                 text,
   altezza_m                       real,
