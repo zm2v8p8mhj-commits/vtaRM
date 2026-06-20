@@ -6,6 +6,7 @@ import { downloadGeoJSON, parseGeoJSON } from '../lib/geojson'
 import { esportaExcel } from '../lib/excel'
 import { generaSchedaPDF } from '../lib/pdf'
 import { generaReport, isPrioritario } from '../lib/report'
+import { generaBackup } from '../lib/backup'
 import CpcBadge from '../components/CpcBadge'
 
 export default function ArchivePage() {
@@ -21,6 +22,7 @@ export default function ArchivePage() {
   const [repDa, setRepDa] = useState('')
   const [repA, setRepA] = useState('')
   const [repInCorso, setRepInCorso] = useState(false)
+  const [backup, setBackup] = useState({ inCorso: false, fatto: 0, totale: 0 })
 
   const filtrati = useMemo(
     () =>
@@ -62,6 +64,21 @@ export default function ArchivePage() {
 
   const esportaXlsx = () =>
     esportaExcel(filtrati, comuni, (a) => fotoDi(a).length, nomeExport())
+
+  const backupCompleto = async () => {
+    setBackup({ inCorso: true, fatto: 0, totale: alberi.length })
+    try {
+      const r = await generaBackup(alberi, comuni, (fatto, totale) => setBackup({ inCorso: true, fatto, totale }))
+      setMessaggio(
+        `✅ Backup completato: ${r.nAlberi} alberi, ${r.nFoto} foto` +
+          (r.nFotoMancanti ? ` (${r.nFotoMancanti} foto cloud non recuperate, offline?)` : '')
+      )
+    } catch (err) {
+      setMessaggio(`❌ Backup non riuscito: ${err.message}`)
+    } finally {
+      setBackup({ inCorso: false, fatto: 0, totale: 0 })
+    }
+  }
 
   // alberi del committente scelto nell'intervallo di date (estremi inclusi)
   const alberiReport = useMemo(() => {
@@ -116,6 +133,10 @@ export default function ArchivePage() {
             </button>
             <button className="btn-primary" onClick={esportaXlsx}>
               📊 Esporta Excel ({filtrati.length})
+            </button>
+            <button className="btn-secondary" onClick={backupCompleto} disabled={backup.inCorso}
+              title="Salva tutto (alberi, comuni, foto) in un unico file .zip">
+              {backup.inCorso ? `💾 Backup… ${backup.fatto}/${backup.totale}` : '💾 Backup completo'}
             </button>
             <input ref={fileRef} type="file" accept=".geojson,.json" className="hidden" onChange={importa} />
           </div>
