@@ -104,6 +104,26 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
   // ---- interventi prioritari
   if (prioritari.length) {
     titoloSezione('Interventi prioritari (urgenti)', [185, 28, 28])
+
+    // nota: cosa deve fare la committenza per la messa in sicurezza
+    const nota =
+      'La committenza è tenuta a mettere in sicurezza senza indugio gli esemplari elencati: ' +
+      'interdire o transennare l\'area di pertinenza e dare corso agli interventi prescritti nei ' +
+      'tempi indicati. Fino all\'attuazione delle misure permane una condizione di rischio per ' +
+      'persone e cose, di cui la committenza è resa edotta con il presente report.'
+    const righeNota = doc.splitTextToSize(nota, LARGHEZZA - 6)
+    const hNota = righeNota.length * 4.2 + 5
+    controllaPagina(hNota + 2)
+    doc.setFillColor(254, 242, 242)
+    doc.setDrawColor(220, 38, 38)
+    doc.roundedRect(MARGINE, y - 2, LARGHEZZA, hNota, 1.5, 1.5, 'FD')
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(153, 27, 27)
+    doc.text('AZIONE RICHIESTA ALLA COMMITTENZA', MARGINE + 3, y + 2.5)
+    doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(60)
+    doc.text(righeNota, MARGINE + 3, y + 7)
+    doc.setTextColor(0)
+    y += hNota + 4
+
     for (const a of prioritari) {
       controllaPagina(40)
       const meta = CPC_META[a.cpc] || CPC_META.A
@@ -152,9 +172,9 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
         const dataUrl = await urlToDataURL(dett[0].url)
         if (dataUrl) {
           const dim = await dimensioniImg(dataUrl)
-          let w = 55
+          let w = 100
           let h = (w * dim.h) / dim.w
-          if (h > 42) { h = 42; w = (h * dim.w) / dim.h }
+          if (h > 75) { h = 75; w = (h * dim.w) / dim.h }
           controllaPagina(h + 4)
           try { doc.addImage(dataUrl, 'JPEG', MARGINE + 2, y, w, h, undefined, 'SLOW') } catch { /* ignora */ }
           y += h + 2
