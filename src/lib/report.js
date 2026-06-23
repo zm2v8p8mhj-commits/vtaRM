@@ -270,7 +270,7 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
   const col = [MARGINE, MARGINE + 26, MARGINE + 42, MARGINE + 96, MARGINE + 138, MARGINE + 150, MARGINE + 168]
   const header = () => {
     doc.setFont('helvetica', 'bold').setFontSize(7.5).setTextColor(...MUTE)
-    ;['Codice', 'Data', 'Specie', 'Localizzazione', 'CPC', 'Rischio', 'Controllo'].forEach((t, i) =>
+    ;['Codice', 'Data', 'Specie', 'Indirizzo', 'CPC', 'Rischio', 'Controllo'].forEach((t, i) =>
       doc.text(t, col[i], y)
     )
     y += 1.6
@@ -291,7 +291,8 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
     doc.text(String(a.codice || ''), col[0], y)
     doc.text(dataIT(a.data_rilievo), col[1], y)
     doc.text(doc.splitTextToSize(a.specie_botanica || '', 50)[0] || '', col[2], y)
-    doc.text(doc.splitTextToSize([a.localizzazione, a.indirizzo].filter(Boolean).join(' · '), 38)[0] || '', col[3], y)
+    // mostra la via rilevata in automatico; ripiega sulla tipologia se assente
+    doc.text(doc.splitTextToSize(a.indirizzo || a.localizzazione || '', 40)[0] || '', col[3], y)
     const meta = CPC_META[a.cpc]
     if (meta) {
       const [r, g, b] = hex(meta.color)
