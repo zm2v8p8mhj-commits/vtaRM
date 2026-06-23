@@ -4,17 +4,22 @@ import { sintesiStato } from './cpc'
 import { urlToDataURL, dimensioniImg } from './pdf'
 
 // ----------------------------------------------------------------------------
-// Report di periodo per il committente: documento tecnico con premessa
-// metodologica, quadro di sintesi, schede degli interventi PRIORITARI (urgenti)
-// ed elenco completo dei rilievi del periodo. Carattere interlocutorio:
-// segnala le priorità prima della consegna della relazione conclusiva.
+// Report di periodo per il committente. Linea grafica sobria e tecnica:
+// un solo colore d'accento (verde istituzionale), testo su scala di grigi,
+// il colore della classe CPC ridotto a un piccolo segno. Niente riquadri pieni.
 // ----------------------------------------------------------------------------
 
-const MARGINE = 14
+const MARGINE = 16
 const LARGHEZZA = 210 - MARGINE * 2
-const VERDE = [22, 101, 52]
+const LABEL_X = MARGINE + 30 // colonna valori allineata
+
+const ACCENT = [22, 101, 52]
+const INK = [33, 37, 41]
+const MUTE = [110, 116, 124]
+const LINE = [214, 218, 222]
+const FILL = [244, 246, 245]
+
 const TECNICO = 'Dott. Agr. Ruggero Manca'
-const ALBO = 'Dottore Agronomo – ODAF Lecce n° 636 · idearurale'
 
 export function isPrioritario(a) {
   return (
@@ -38,19 +43,18 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let y = 0
 
+  // intestazione minimale: filetto verde + titolo, ripetuta a ogni pagina
   const intestazione = () => {
-    doc.setFillColor(...VERDE)
-    doc.rect(0, 0, 210, 22, 'F')
-    doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(13)
-    doc.text('REPORT DI SOPRALLUOGO – Valutazione di Stabilità degli Alberi (VTA)', MARGINE, 9)
-    doc.setFontSize(9).setFont('helvetica', 'normal')
-    doc.text(comuneNome || 'Committente', MARGINE, 15)
-    const periodo = dataDa || dataA ? `Periodo: ${dataIT(dataDa)} – ${dataIT(dataA)}` : 'Tutti i rilievi'
-    doc.text(periodo, MARGINE, 19.5)
-    doc.setFontSize(7.5)
-    doc.text(`Emesso il ${new Date().toLocaleDateString('it-IT')}`, 210 - MARGINE, 19.5, { align: 'right' })
-    doc.setTextColor(0)
-    y = 30
+    doc.setFont('helvetica', 'bold').setFontSize(13).setTextColor(...ACCENT)
+    doc.text('Report di sopralluogo VTA', MARGINE, 16)
+    doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(...MUTE)
+    doc.text(comuneNome || 'Committente', MARGINE, 21)
+    const periodo = dataDa || dataA ? `${dataIT(dataDa)} – ${dataIT(dataA)}` : 'Tutti i rilievi'
+    doc.text(`${periodo}  ·  emesso il ${new Date().toLocaleDateString('it-IT')}`, 210 - MARGINE, 21, { align: 'right' })
+    doc.setDrawColor(...ACCENT).setLineWidth(0.6)
+    doc.line(MARGINE, 24, 210 - MARGINE, 24)
+    doc.setLineWidth(0.2).setTextColor(0)
+    y = 32
   }
 
   const controllaPagina = (h = 10) => {
@@ -60,37 +64,51 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
     }
   }
 
-  const titoloSezione = (t, colore = VERDE) => {
+  // titolo di sezione: testo verde + sottile filetto, niente riquadro pieno
+  const sezione = (t) => {
     controllaPagina(14)
-    y += 2
-    doc.setFillColor(colore[0], colore[1], colore[2])
-    doc.rect(MARGINE, y - 4.5, LARGHEZZA, 7, 'F')
-    doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(255)
-    doc.text(t.toUpperCase(), MARGINE + 2, y)
-    doc.setTextColor(0)
-    y += 9
+    y += 3
+    doc.setFont('helvetica', 'bold').setFontSize(10.5).setTextColor(...ACCENT)
+    doc.text(t.toUpperCase(), MARGINE, y)
+    y += 1.8
+    doc.setDrawColor(...ACCENT).setLineWidth(0.4)
+    doc.line(MARGINE, y, MARGINE + LARGHEZZA, y)
+    doc.setLineWidth(0.2).setTextColor(0)
+    y += 5
   }
 
-  const paragrafo = (testo, size = 9.5, colore = [40, 40, 40]) => {
+  const paragrafo = (testo, colore = INK, size = 9.2) => {
     doc.setFont('helvetica', 'normal').setFontSize(size).setTextColor(...colore)
     const righe = doc.splitTextToSize(testo, LARGHEZZA)
-    controllaPagina(righe.length * (size * 0.5) + 2)
+    controllaPagina(righe.length * 4.4 + 2)
     doc.text(righe, MARGINE, y)
-    y += righe.length * (size * 0.5) + 3
+    y += righe.length * 4.4 + 3
+    doc.setTextColor(0)
+  }
+
+  // riga etichetta/valore con colonna allineata
+  const campo = (et, v, x0 = MARGINE) => {
+    if (!v) return
+    controllaPagina(6)
+    doc.setFont('helvetica', 'bold').setFontSize(8.8).setTextColor(...INK)
+    doc.text(et, x0, y)
+    doc.setFont('helvetica', 'normal').setTextColor(...INK)
+    const righe = doc.splitTextToSize(String(v), MARGINE + LARGHEZZA - LABEL_X)
+    doc.text(righe, LABEL_X, y)
+    y += righe.length * 4.4 + 1.2
     doc.setTextColor(0)
   }
 
   intestazione()
 
   // ---- letterhead studio
-  doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(...VERDE)
+  doc.setFont('helvetica', 'bold').setFontSize(9.5).setTextColor(...INK)
   doc.text(TECNICO, MARGINE, y)
-  doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(90)
-  doc.text(ALBO, MARGINE, y + 4.5)
+  doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTE)
+  doc.text('Dottore Agronomo · ODAF Lecce n° 636 · idearurale', MARGINE, y + 4.3)
   doc.setTextColor(0)
   y += 11
 
-  // ---- conteggi e indicatori
   const conteggi = { A: 0, B: 0, C: 0, 'C/D': 0, D: 0 }
   for (const a of alberi) if (conteggi[a.cpc] != null) conteggi[a.cpc]++
   const prioritari = alberi.filter(isPrioritario).sort((x, z) => rank(x) - rank(z))
@@ -98,128 +116,105 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
   const nEmergenze = alberi.filter((a) => a.intervento_emergenza).length
 
   // ---- oggetto + premessa
-  titoloSezione('Oggetto e premessa metodologica')
+  sezione('Oggetto e premessa metodologica')
   paragrafo(
-    `Il presente documento riepiloga i rilievi di stabilità arborea (VTA) eseguiti per ` +
-      `${comuneNome || 'la committenza'} ${
-        dataDa || dataA ? `nel periodo ${dataIT(dataDa)} – ${dataIT(dataA)}` : ''
-      }, per un totale di ${alberi.length} esemplari valutati.`
+    `Il presente documento riepiloga i rilievi di stabilità arborea eseguiti per ` +
+      `${comuneNome || 'la committenza'}${
+        dataDa || dataA ? ` nel periodo ${dataIT(dataDa)} – ${dataIT(dataA)}` : ''
+      }, per complessivi ${alberi.length} esemplari valutati.`
   )
   paragrafo(
-    'La valutazione è condotta con metodo VTA di Livello 1 (analisi visiva speditiva) secondo il ' +
-      'protocollo S.I.A.: la Classe di Propensione al Cedimento (CPC) deriva dai difetti rilevati nei ' +
-      'distretti anatomici dell\'albero con la regola del valore peggiore; la classe di rischio integra ' +
-      'la propensione con il bersaglio (frequentazione dell\'area). Il documento ha carattere ' +
-      'interlocutorio: segnala le priorità d\'intervento in attesa della relazione tecnica conclusiva.',
-    9,
-    [90, 90, 90]
+    'Valutazione condotta con metodo VTA di Livello 1 (analisi visiva speditiva) secondo il protocollo ' +
+      'S.I.A.: la Classe di Propensione al Cedimento (CPC) deriva dai difetti rilevati nei distretti ' +
+      'anatomici con la regola del valore peggiore; la classe di rischio integra la propensione con il ' +
+      'bersaglio. Il documento ha carattere interlocutorio e segnala le priorità d\'intervento in attesa ' +
+      'della relazione tecnica conclusiva.',
+    MUTE,
+    8.6
   )
 
-  // ---- quadro di sintesi
-  titoloSezione('Quadro di sintesi')
-  const celle = ['A', 'B', 'C', 'C/D', 'D']
-  const wCella = LARGHEZZA / celle.length
-  celle.forEach((c, i) => {
-    const meta = CPC_META[c]
-    const [r, g, b] = hex(meta.bg)
-    const x = MARGINE + i * wCella
+  // ---- quadro di sintesi (sobrio: piccoli segni colore + conteggi)
+  sezione('Quadro di sintesi')
+  doc.setFillColor(...FILL)
+  doc.roundedRect(MARGINE, y, LARGHEZZA, 16, 1.5, 1.5, 'F')
+  const passo = LARGHEZZA / 5
+  ;['A', 'B', 'C', 'C/D', 'D'].forEach((c, i) => {
+    const x = MARGINE + i * passo + 7
+    const [r, g, b] = hex(CPC_META[c].color)
     doc.setFillColor(r, g, b)
-    doc.roundedRect(x + 1, y, wCella - 2, 17, 1.5, 1.5, 'F')
-    const [tr, tg, tb] = hex(meta.color)
-    doc.setTextColor(tr, tg, tb).setFont('helvetica', 'bold')
-    doc.setFontSize(14).text(String(conteggi[c]), x + wCella / 2, y + 7.5, { align: 'center' })
-    doc.setFontSize(7).text(`Classe ${c}`, x + wCella / 2, y + 13, { align: 'center' })
+    doc.rect(x, y + 5.5, 3.2, 3.2, 'F')
+    doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(...INK)
+    doc.text(String(conteggi[c]), x + 5.5, y + 8.6)
+    doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(...MUTE)
+    doc.text(`Classe ${c}`, x, y + 12.6)
   })
   doc.setTextColor(0)
-  y += 21
-
-  // indicatori chiave
-  doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(60)
+  y += 20
+  doc.setFont('helvetica', 'normal').setFontSize(8.6).setTextColor(...INK)
   doc.text(
-    `Totale valutati: ${alberi.length}    |    Interventi prioritari: ${prioritari.length}` +
-      `    |    Indagini strumentali richieste: ${nIndagini}    |    Emergenze: ${nEmergenze}`,
+    `Totale valutati ${alberi.length}    ·    Interventi prioritari ${prioritari.length}    ·    ` +
+      `Indagini strumentali ${nIndagini}    ·    Emergenze ${nEmergenze}`,
     MARGINE,
     y
   )
-  y += 5
-  doc.setFontSize(7.5).setTextColor(120)
-  doc.text(
-    'Legenda CPC:  A Trascurabile · B Bassa · C Moderata · C/D Elevata · D Estrema',
-    MARGINE,
-    y
-  )
+  y += 4.5
+  doc.setFontSize(7.3).setTextColor(...MUTE)
+  doc.text('A Trascurabile · B Bassa · C Moderata · C/D Elevata · D Estrema', MARGINE, y)
   doc.setTextColor(0)
-  y += 5
+  y += 4
 
   // ---- interventi prioritari
   if (prioritari.length) {
-    titoloSezione('Interventi prioritari (urgenti)', [185, 28, 28])
+    sezione('Interventi prioritari')
 
+    // nota committenza: box grigio chiaro con filetto verde a sinistra
     const nota =
-      'Per gli esemplari qui segnalati si suggerisce di valutare, in via cautelativa e nei tempi ' +
-      'indicati, le opportune misure di messa in sicurezza dell\'area (ad esempio la delimitazione ' +
-      'o il transennamento della zona di pertinenza) e di programmare gli interventi proposti ' +
-      'secondo le priorità riportate. Lo scrivente resta a disposizione per concordare insieme ' +
-      'modalità e tempi più idonei.'
-    const righeNota = doc.splitTextToSize(nota, LARGHEZZA - 6)
-    const hNota = righeNota.length * 4.2 + 6
+      'Per gli esemplari segnalati si suggerisce di valutare, in via cautelativa e nei tempi indicati, ' +
+      'le opportune misure di messa in sicurezza dell\'area (delimitazione o transennamento della zona ' +
+      'di pertinenza) e di programmare gli interventi proposti secondo le priorità riportate. Lo ' +
+      'scrivente resta a disposizione per concordare insieme modalità e tempi più idonei.'
+    const righeNota = doc.splitTextToSize(nota, LARGHEZZA - 10)
+    const hNota = righeNota.length * 4 + 9
     controllaPagina(hNota + 2)
-    doc.setFillColor(255, 251, 235)
-    doc.setDrawColor(217, 119, 6)
-    doc.roundedRect(MARGINE, y - 2, LARGHEZZA, hNota, 1.5, 1.5, 'FD')
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(146, 64, 14)
-    doc.text('Nota per la committenza – messa in sicurezza', MARGINE + 3, y + 2.5)
-    doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(60)
-    doc.text(righeNota, MARGINE + 3, y + 7)
+    doc.setFillColor(...FILL)
+    doc.roundedRect(MARGINE, y, LARGHEZZA, hNota, 1.5, 1.5, 'F')
+    doc.setFillColor(...ACCENT)
+    doc.rect(MARGINE, y, 2, hNota, 'F')
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(...INK)
+    doc.text('Nota per la committenza — messa in sicurezza', MARGINE + 5, y + 5)
+    doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTE)
+    doc.text(righeNota, MARGINE + 5, y + 9.5)
     doc.setTextColor(0)
-    y += hNota + 5
+    y += hNota + 6
 
-    const X0 = MARGINE + 6 // contenuto rientrato (barra colorata a sinistra)
-    for (const a of prioritari) {
+    for (let k = 0; k < prioritari.length; k++) {
+      const a = prioritari[k]
       controllaPagina(46)
       const meta = CPC_META[a.cpc] || CPC_META.A
-      const yStart = y - 5
 
-      // titolo scheda: badge CPC + codice + specie
+      // riga titolo: chip CPC + codice/specie  ·  rischio a destra
       const [cr, cg, cb] = hex(meta.color)
       doc.setFillColor(cr, cg, cb)
-      doc.roundedRect(X0, y, 18, 8, 1.5, 1.5, 'F')
-      doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(9)
-      doc.text(a.cpc || '—', X0 + 9, y + 5.5, { align: 'center' })
-      doc.setTextColor(0).setFont('helvetica', 'bold').setFontSize(11)
-      doc.text(`${a.codice || ''}   ${a.specie_botanica || ''}`, X0 + 22, y + 4)
-      // badge rischio a destra
-      if (a.classe_rischio && CLASSE_RISCHIO_META[a.classe_rischio]) {
-        const rm = CLASSE_RISCHIO_META[a.classe_rischio]
-        const [rr, rg, rb] = hex(rm.bg)
-        const [tr, tg, tb] = hex(rm.color)
-        const tw = doc.getTextWidth(a.classe_rischio) + 8
-        doc.setFillColor(rr, rg, rb)
-        doc.roundedRect(MARGINE + LARGHEZZA - tw, y, tw, 8, 1.5, 1.5, 'F')
-        doc.setTextColor(tr, tg, tb).setFont('helvetica', 'bold').setFontSize(8)
-        doc.text(`Rischio ${a.classe_rischio}`, MARGINE + LARGHEZZA - tw / 2, y + 5.3, { align: 'center' })
-        doc.setTextColor(0)
+      doc.roundedRect(MARGINE, y - 3.6, 7, 5.4, 1, 1, 'F')
+      doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(8)
+      doc.text(a.cpc || '—', MARGINE + 3.5, y, { align: 'center' })
+      doc.setTextColor(...INK).setFont('helvetica', 'bold').setFontSize(10.5)
+      doc.text(`${a.codice || ''}   ${a.specie_botanica || ''}`, MARGINE + 10, y)
+      if (a.classe_rischio) {
+        doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(...MUTE)
+        doc.text(`Rischio: ${a.classe_rischio}`, MARGINE + LARGHEZZA, y, { align: 'right' })
       }
-      doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(90)
-      doc.text([a.localizzazione, a.indirizzo].filter(Boolean).join(' – ') || '—', X0 + 22, y + 8.5)
       doc.setTextColor(0)
-      y += 12
-
-      const riga = (et, v) => {
-        if (!v) return
-        controllaPagina(6)
-        doc.setFont('helvetica', 'bold').setFontSize(8.5)
-        doc.text(`${et}:`, X0, y)
-        doc.setFont('helvetica', 'normal')
-        const righe = doc.splitTextToSize(String(v), LARGHEZZA - 42)
-        doc.text(righe, X0 + 32, y)
-        y += righe.length * 4.2 + 1
-      }
+      y += 5
+      doc.setFont('helvetica', 'normal').setFontSize(8.3).setTextColor(...MUTE)
+      doc.text([a.localizzazione, a.indirizzo].filter(Boolean).join(' · ') || '—', MARGINE + 10, y)
+      doc.setTextColor(0)
+      y += 5
 
       if (a.intervento_emergenza) {
         controllaPagina(6)
-        doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(185, 28, 28)
-        doc.text('⚠ EMERGENZA – messa in sicurezza / abbattimento immediato', X0, y)
+        doc.setFont('helvetica', 'bold').setFontSize(8.6).setTextColor(180, 35, 35)
+        doc.text('Emergenza — messa in sicurezza o abbattimento immediato', MARGINE, y)
         doc.setTextColor(0)
         y += 5
       }
@@ -229,21 +224,21 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
         a.diametro_chioma_m != null ? `chioma ${a.diametro_chioma_m} m` : null,
         a.fase_sviluppo,
       ].filter(Boolean).join(' · ')
-      riga('Biometria', bio)
-      riga('Difetti', sintesiStato(a))
-      riga('Prescrizione', `${a.prescrizioni_gestionali || '—'}${a.urgenza_intervento ? ` — ${a.urgenza_intervento}` : ''}`)
-      if (a.mitigazione_bersaglio) riga('Mitigazione', `${a.mitigazione_bersaglio}${a.urgenza_mitigazione ? ` — ${a.urgenza_mitigazione}` : ''}`)
-      if (a.richiesta_indagine_strumentale) riga('Indagine', `${a.tipo_indagine_richiesta || ''}${a.urgenza_indagine ? ` — ${a.urgenza_indagine}` : ''}`)
+      campo('Biometria', bio)
+      campo('Difetti', sintesiStato(a))
+      campo('Prescrizione', `${a.prescrizioni_gestionali || '—'}${a.urgenza_intervento ? ` — ${a.urgenza_intervento}` : ''}`)
+      if (a.mitigazione_bersaglio) campo('Mitigazione', `${a.mitigazione_bersaglio}${a.urgenza_mitigazione ? ` — ${a.urgenza_mitigazione}` : ''}`)
+      if (a.richiesta_indagine_strumentale) campo('Indagine', `${a.tipo_indagine_richiesta || ''}${a.urgenza_indagine ? ` — ${a.urgenza_indagine}` : ''}`)
       if (a.lat != null) {
         controllaPagina(6)
-        doc.setFont('helvetica', 'bold').setFontSize(8.5)
-        doc.text('Posizione:', X0, y)
+        doc.setFont('helvetica', 'bold').setFontSize(8.8).setTextColor(...INK)
+        doc.text('Posizione', MARGINE, y)
         doc.setFont('helvetica', 'normal')
-        doc.text(`${a.lat.toFixed(6)}, ${a.lng.toFixed(6)}`, X0 + 32, y)
-        doc.setTextColor(37, 99, 235)
-        doc.textWithLink('Apri in Google Maps', X0 + 78, y, { url: `https://www.google.com/maps?q=${a.lat},${a.lng}` })
+        doc.text(`${a.lat.toFixed(6)}, ${a.lng.toFixed(6)}`, LABEL_X, y)
+        doc.setTextColor(...ACCENT)
+        doc.textWithLink('apri in Google Maps', LABEL_X + 46, y, { url: `https://www.google.com/maps?q=${a.lat},${a.lng}` })
         doc.setTextColor(0)
-        y += 5.2
+        y += 5.5
       }
 
       const dett = fotoDettagli ? fotoDettagli(a) : []
@@ -251,93 +246,98 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
         const dataUrl = await urlToDataURL(dett[0].url)
         if (dataUrl) {
           const dim = await dimensioniImg(dataUrl)
-          let w = 100
+          let w = 95
           let h = (w * dim.h) / dim.w
-          if (h > 75) { h = 75; w = (h * dim.w) / dim.h }
+          if (h > 70) { h = 70; w = (h * dim.w) / dim.h }
           controllaPagina(h + 4)
-          try { doc.addImage(dataUrl, 'JPEG', X0, y, w, h, undefined, 'SLOW') } catch { /* ignora */ }
+          try { doc.addImage(dataUrl, 'JPEG', MARGINE, y, w, h, undefined, 'SLOW') } catch { /* ignora */ }
           y += h + 2
         }
       }
-      // barra colorata a sinistra per dare forma di "scheda"
-      doc.setFillColor(cr, cg, cb)
-      doc.rect(MARGINE, yStart, 2.5, y - yStart - 1, 'F')
-      doc.setDrawColor(225)
-      doc.line(MARGINE, y, MARGINE + LARGHEZZA, y)
-      y += 5
+      // separatore sottile tra schede (non dopo l'ultima)
+      if (k < prioritari.length - 1) {
+        controllaPagina(6)
+        doc.setDrawColor(...LINE).setLineWidth(0.2)
+        doc.line(MARGINE, y, MARGINE + LARGHEZZA, y)
+        y += 5
+      }
     }
+    y += 2
   }
 
   // ---- elenco completo del periodo
-  titoloSezione('Elenco completo del periodo')
-  const col = [MARGINE + 1, MARGINE + 27, MARGINE + 44, MARGINE + 98, MARGINE + 140, MARGINE + 152, MARGINE + 170]
+  sezione('Elenco completo del periodo')
+  const col = [MARGINE, MARGINE + 26, MARGINE + 42, MARGINE + 96, MARGINE + 138, MARGINE + 150, MARGINE + 168]
   const header = () => {
-    doc.setFillColor(...VERDE)
-    doc.rect(MARGINE, y - 4, LARGHEZZA, 6, 'F')
-    doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(7.5)
-    ;['Codice', 'Data', 'Specie', 'Localizzazione', 'CPC', 'Rischio', 'Pross. contr.'].forEach((t, i) =>
+    doc.setFont('helvetica', 'bold').setFontSize(7.5).setTextColor(...MUTE)
+    ;['Codice', 'Data', 'Specie', 'Localizzazione', 'CPC', 'Rischio', 'Controllo'].forEach((t, i) =>
       doc.text(t, col[i], y)
     )
+    y += 1.6
+    doc.setDrawColor(...LINE).setLineWidth(0.3)
+    doc.line(MARGINE, y, MARGINE + LARGHEZZA, y)
+    y += 4
     doc.setTextColor(0)
-    y += 5
   }
   header()
   const ordinati = [...alberi].sort((x, z) => rank(x) - rank(z))
-  doc.setFont('helvetica', 'normal').setFontSize(7.8)
   ordinati.forEach((a, idx) => {
-    if (y > 280) { doc.addPage(); intestazione(); doc.setFontSize(7.8); header() }
+    if (y > 280) { doc.addPage(); intestazione(); header() }
     if (idx % 2 === 1) {
-      doc.setFillColor(244, 247, 245)
-      doc.rect(MARGINE, y - 3.4, LARGHEZZA, 5, 'F')
+      doc.setFillColor(...FILL)
+      doc.rect(MARGINE, y - 3.3, LARGHEZZA, 5, 'F')
     }
-    doc.setFont('helvetica', 'normal').setFontSize(7.8).setTextColor(0)
+    doc.setFont('helvetica', 'normal').setFontSize(7.8).setTextColor(...INK)
     doc.text(String(a.codice || ''), col[0], y)
     doc.text(dataIT(a.data_rilievo), col[1], y)
-    doc.text(doc.splitTextToSize(a.specie_botanica || '', 52)[0] || '', col[2], y)
-    doc.text(doc.splitTextToSize([a.localizzazione, a.indirizzo].filter(Boolean).join(' – '), 40)[0] || '', col[3], y)
+    doc.text(doc.splitTextToSize(a.specie_botanica || '', 50)[0] || '', col[2], y)
+    doc.text(doc.splitTextToSize([a.localizzazione, a.indirizzo].filter(Boolean).join(' · '), 38)[0] || '', col[3], y)
     const meta = CPC_META[a.cpc]
     if (meta) {
       const [r, g, b] = hex(meta.color)
-      doc.setTextColor(r, g, b).setFont('helvetica', 'bold')
-      doc.text(a.cpc, col[4], y)
-      doc.setTextColor(0).setFont('helvetica', 'normal')
+      doc.setFillColor(r, g, b)
+      doc.rect(col[4], y - 2.6, 2.6, 2.6, 'F')
+      doc.setTextColor(...INK).setFont('helvetica', 'bold')
+      doc.text(a.cpc, col[4] + 4, y)
+      doc.setFont('helvetica', 'normal')
     }
+    doc.setTextColor(...INK)
     doc.text(a.classe_rischio || '—', col[5], y)
     doc.text(dataIT(a.data_prossimo_controllo), col[6], y)
     y += 5
   })
+  doc.setTextColor(0)
 
   // ---- conclusioni + firma
-  titoloSezione('Conclusioni')
+  sezione('Conclusioni')
   paragrafo(
-    'Si raccomanda di dare seguito agli interventi prioritari nei tempi indicati e di programmare ' +
-      'gli altri secondo le scadenze di ricontrollo riportate. Il presente report non sostituisce la ' +
+    'Si raccomanda di dare seguito agli interventi prioritari nei tempi indicati e di programmare gli ' +
+      'altri secondo le scadenze di ricontrollo riportate. Il presente report non sostituisce la ' +
       'relazione tecnica conclusiva, alla quale si rinvia per le valutazioni di dettaglio e le eventuali ' +
       'indagini strumentali di approfondimento.'
   )
-  controllaPagina(28)
-  y += 6
-  doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(0)
-  doc.text(`Luogo e data: ____________________________`, MARGINE, y)
-  doc.text('Il tecnico incaricato', MARGINE + LARGHEZZA, y, { align: 'right' })
-  y += 12
-  doc.setDrawColor(150)
-  doc.line(MARGINE + LARGHEZZA - 70, y, MARGINE + LARGHEZZA, y)
+  controllaPagina(26)
+  y += 8
+  doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(...INK)
+  doc.text('Luogo e data  ____________________________', MARGINE, y)
+  doc.setDrawColor(...LINE).setLineWidth(0.3)
+  doc.line(MARGINE + LARGHEZZA - 64, y, MARGINE + LARGHEZZA, y)
   doc.setFont('helvetica', 'bold').setFontSize(9)
   doc.text(TECNICO, MARGINE + LARGHEZZA, y + 4.5, { align: 'right' })
-  doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(90)
-  doc.text('Dottore Agronomo – ODAF Lecce n° 636', MARGINE + LARGHEZZA, y + 8.5, { align: 'right' })
+  doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(...MUTE)
+  doc.text('Dottore Agronomo · ODAF Lecce n° 636', MARGINE + LARGHEZZA, y + 8.5, { align: 'right' })
   doc.setTextColor(0)
 
-  // piè di pagina
+  // piè di pagina coerente
   const pagine = doc.getNumberOfPages()
   for (let i = 1; i <= pagine; i++) {
     doc.setPage(i)
-    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(120)
-    doc.text(
-      `Report VTA – ${comuneNome || 'Committente'} – generato il ${new Date().toLocaleDateString('it-IT')} – ${TECNICO} – pag. ${i}/${pagine}`,
-      105, 292, { align: 'center' }
-    )
+    doc.setDrawColor(...LINE).setLineWidth(0.2)
+    doc.line(MARGINE, 286, 210 - MARGINE, 286)
+    doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(...MUTE)
+    doc.text(`${comuneNome || 'Committente'} · Report VTA`, MARGINE, 290)
+    doc.text(`${TECNICO}`, 105, 290, { align: 'center' })
+    doc.text(`pag. ${i}/${pagine}`, 210 - MARGINE, 290, { align: 'right' })
     doc.setTextColor(0)
   }
 
