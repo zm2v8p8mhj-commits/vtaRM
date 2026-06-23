@@ -165,7 +165,19 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
       riga('Prescrizione', `${a.prescrizioni_gestionali || '—'}${a.urgenza_intervento ? ` (${a.urgenza_intervento})` : ''}`)
       if (a.mitigazione_bersaglio) riga('Mitigazione', `${a.mitigazione_bersaglio}${a.urgenza_mitigazione ? ` (${a.urgenza_mitigazione})` : ''}`)
       if (a.richiesta_indagine_strumentale) riga('Indagine', `${a.tipo_indagine_richiesta || ''}${a.urgenza_indagine ? ` (${a.urgenza_indagine})` : ''}`)
-      if (a.lat != null) riga('Posizione', `https://maps.google.com/?q=${a.lat},${a.lng}`)
+      if (a.lat != null) {
+        controllaPagina(6)
+        doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0)
+        doc.text('Posizione:', MARGINE + 2, y)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`${a.lat.toFixed(6)}, ${a.lng.toFixed(6)}`, MARGINE + 36, y)
+        // vero collegamento PDF (cliccabile in tutti i lettori, non solo su Mac)
+        const url = `https://www.google.com/maps?q=${a.lat},${a.lng}`
+        doc.setTextColor(37, 99, 235)
+        doc.textWithLink('Apri in Google Maps', MARGINE + 78, y, { url })
+        doc.setTextColor(0)
+        y += 5.2
+      }
 
       // foto di copertina (prima disponibile)
       const dett = fotoDettagli ? fotoDettagli(a) : []

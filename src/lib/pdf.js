@@ -219,6 +219,18 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
   titoloSezione('1. Identificazione e localizzazione')
   riga('Data rilievo', albero.data_rilievo ? new Date(albero.data_rilievo).toLocaleString('it-IT') : '—')
   riga('Coordinate GPS', `${albero.lat?.toFixed(6)}, ${albero.lng?.toFixed(6)} (WGS84)`)
+  if (albero.lat != null && albero.lng != null) {
+    controllaPagina(6)
+    doc.setFont('helvetica', 'bold').setFontSize(9)
+    doc.text('Mappa:', MARGINE + 2, y)
+    doc.setFont('helvetica', 'normal').setTextColor(37, 99, 235)
+    // vero collegamento PDF, cliccabile in tutti i lettori
+    doc.textWithLink('Apri in Google Maps', MARGINE + 50, y, {
+      url: `https://www.google.com/maps?q=${albero.lat},${albero.lng}`,
+    })
+    doc.setTextColor(0)
+    y += 6
+  }
   riga('Localizzazione', albero.localizzazione)
   riga('Indirizzo', albero.indirizzo)
   riga('Rilevatore', albero.rilevatore)
