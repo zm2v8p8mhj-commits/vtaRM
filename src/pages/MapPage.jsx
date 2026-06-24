@@ -86,6 +86,7 @@ export default function MapPage() {
         comuneNome: committenteArea(areaSel.dentro),
         zonaEtichetta: nomeZona.trim() ? `Zona: ${nomeZona.trim()}` : 'Area selezionata sulla mappa',
         descrizioneGenerale: descrZona,
+        zonaPunti: areaSel.punti,
         fotoDettagli,
       })
     } finally {

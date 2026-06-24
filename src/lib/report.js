@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf'
 import { CPC_META, CLASSE_RISCHIO_META } from './constants'
 import { sintesiStato } from './cpc'
 import { urlToDataURL, dimensioniImg } from './pdf'
+import { mappaZonaDataURL } from './mappaStatica'
 
 // ----------------------------------------------------------------------------
 // Report di periodo per il committente. Linea grafica sobria e tecnica:
@@ -41,7 +42,7 @@ const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 
 export async function generaReport(
   alberi,
-  { comuneNome = '', dataDa, dataA, fotoDettagli, zonaEtichetta = '', descrizioneGenerale = '' } = {}
+  { comuneNome = '', dataDa, dataA, fotoDettagli, zonaEtichetta = '', descrizioneGenerale = '', zonaPunti = null } = {}
 ) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let y = 0
@@ -169,6 +170,27 @@ export async function generaReport(
   doc.text('A Trascurabile · B Bassa · C Moderata · C/D Elevata · D Estrema', MARGINE, y)
   doc.setTextColor(0)
   y += 4
+
+  // ---- inquadramento dell'area (mappa statica con poligono e alberi)
+  if (zonaPunti && zonaPunti.length >= 3) {
+    const mappa = await mappaZonaDataURL(zonaPunti, alberi, { larghezza: 760, altezza: 430 })
+    if (mappa) {
+      sezione('Inquadramento dell\'area')
+      const w = LARGHEZZA
+      const h = (w * 430) / 760
+      controllaPagina(h + 2)
+      try {
+        doc.addImage(mappa, 'JPEG', MARGINE, y, w, h)
+      } catch {
+        /* ignora */
+      }
+      y += h + 2
+      doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(...MUTE)
+      doc.text('Perimetro indicativo dell\'area; i punti rappresentano gli esemplari valutati (colore = classe CPC).', MARGINE, y)
+      doc.setTextColor(0)
+      y += 4
+    }
+  }
 
   // ---- stato generale del verde (descrizione discorsiva del tecnico)
   if (descrizioneGenerale && descrizioneGenerale.trim()) {
