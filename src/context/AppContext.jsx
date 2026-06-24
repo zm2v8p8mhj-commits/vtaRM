@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { supabase, supabaseEnabled } from '../lib/supabaseClient'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { supabase, supabaseEnabled, FOTO_BUCKET } from '../lib/supabaseClient'
 import * as db from '../lib/db'
 import { sincronizza } from '../lib/sync'
 import { ALBERI_DEMO } from '../lib/demoData'
@@ -118,55 +118,75 @@ export function AppProvider({ children }) {
 
   // ---------------------------------------------------------------- zone salvate
   // Aree disegnate (strumento di studio). Con Supabase attivo sono condivise tra
-  // i PC dell'admin (tabella 'zone'); IndexedDB ('zone-vta') resta come copia
-  // locale/offline. Forma: { id, nome, descrizione, punti: [[lat,lng],...], created_at }
+  // i PC dell'admin salvandole come un unico file JSON nello Storage (bucket
+  // foto, scrivibile dall'admin loggato): nessuna tabella da creare. IndexedDB
+  // ('zone-vta') resta copia locale/offline.
+  // Forma: { id, nome, descrizione, punti: [[lat,lng],...], created_at }
+  const ZONE_PATH = 'zone/zone.json'
+  const zoneRef = useRef([])
+  useEffect(() => {
+    zoneRef.current = zone
+  }, [zone])
+
+  const scriviZoneCloud = useCallback(async (arr) => {
+    const blob = new Blob([JSON.stringify(arr)], { type: 'application/json' })
+    const { error } = await supabase.storage
+      .from(FOTO_BUCKET)
+      .upload(ZONE_PATH, blob, { contentType: 'application/json', upsert: true, cacheControl: '0' })
+    if (error) throw new Error(error.message)
+  }, [])
+
   const caricaZone = useCallback(async () => {
+    const locali = (await db.getMeta('zone-vta')) || []
     if (supabaseEnabled && navigator.onLine) {
-      const { data, error } = await supabase
-        .from('zone')
-        .select('id, nome, descrizione, punti, created_at')
-        .order('created_at')
-      if (!error && data) {
-        setZone(data)
-        await db.setMeta('zone-vta', data) // aggiorna la copia locale
-        return
+      try {
+        const { data, error } = await supabase.storage.from(FOTO_BUCKET).download(ZONE_PATH)
+        if (!error && data) {
+          const arr = JSON.parse(await data.text())
+          setZone(arr)
+          await db.setMeta('zone-vta', arr)
+          return
+        }
+        // file ancora inesistente: prima volta. Se ho zone locali (vecchio modello
+        // solo-locale) le migro sul cloud così diventano condivise.
+        if (locali.length) {
+          await scriviZoneCloud(locali).catch(() => {})
+        }
+      } catch {
+        /* offline o JSON illeggibile: uso la copia locale */
       }
     }
-    setZone((await db.getMeta('zone-vta')) || []) // offline o demo
-  }, [])
+    setZone(locali)
+  }, [scriviZoneCloud])
 
-  const salvaZona = useCallback(async (zona) => {
-    const id = zona.id || crypto.randomUUID()
-    const record = {
-      id,
-      nome: zona.nome || '',
-      descrizione: zona.descrizione || '',
-      punti: zona.punti || [],
-      created_at: zona.created_at || new Date().toISOString(),
-    }
-    if (supabaseEnabled) {
-      const { error } = await supabase.from('zone').upsert(record)
-      if (error) throw new Error(error.message)
-    }
-    setZone((prec) => {
-      const nuove = [...prec.filter((z) => z.id !== id), record]
-      db.setMeta('zone-vta', nuove)
-      return nuove
-    })
-    return id
-  }, [])
+  const salvaZona = useCallback(
+    async (zona) => {
+      const id = zona.id || crypto.randomUUID()
+      const record = {
+        id,
+        nome: zona.nome || '',
+        descrizione: zona.descrizione || '',
+        punti: zona.punti || [],
+        created_at: zona.created_at || new Date().toISOString(),
+      }
+      const nuove = [...zoneRef.current.filter((z) => z.id !== id), record]
+      if (supabaseEnabled) await scriviZoneCloud(nuove)
+      setZone(nuove)
+      await db.setMeta('zone-vta', nuove)
+      return id
+    },
+    [scriviZoneCloud]
+  )
 
-  const eliminaZona = useCallback(async (id) => {
-    if (supabaseEnabled) {
-      const { error } = await supabase.from('zone').delete().eq('id', id)
-      if (error) throw new Error(error.message)
-    }
-    setZone((prec) => {
-      const rimaste = prec.filter((z) => z.id !== id)
-      db.setMeta('zone-vta', rimaste)
-      return rimaste
-    })
-  }, [])
+  const eliminaZona = useCallback(
+    async (id) => {
+      const rimaste = zoneRef.current.filter((z) => z.id !== id)
+      if (supabaseEnabled) await scriviZoneCloud(rimaste)
+      setZone(rimaste)
+      await db.setMeta('zone-vta', rimaste)
+    },
+    [scriviZoneCloud]
+  )
 
   const avviaSync = useCallback(async () => {
     if (!supabaseEnabled) return
