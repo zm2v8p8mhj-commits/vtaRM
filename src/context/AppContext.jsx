@@ -117,26 +117,55 @@ export function AppProvider({ children }) {
   }, [])
 
   // ---------------------------------------------------------------- zone salvate
-  // Persistite in IndexedDB (meta 'zone-vta'): restano sul dispositivo tra le
-  // sessioni. Forma: { id, nome, descrizione, punti: [[lat,lng],...], created_at }
+  // Aree disegnate (strumento di studio). Con Supabase attivo sono condivise tra
+  // i PC dell'admin (tabella 'zone'); IndexedDB ('zone-vta') resta come copia
+  // locale/offline. Forma: { id, nome, descrizione, punti: [[lat,lng],...], created_at }
   const caricaZone = useCallback(async () => {
-    setZone((await db.getMeta('zone-vta')) || [])
+    if (supabaseEnabled && navigator.onLine) {
+      const { data, error } = await supabase
+        .from('zone')
+        .select('id, nome, descrizione, punti, created_at')
+        .order('created_at')
+      if (!error && data) {
+        setZone(data)
+        await db.setMeta('zone-vta', data) // aggiorna la copia locale
+        return
+      }
+    }
+    setZone((await db.getMeta('zone-vta')) || []) // offline o demo
   }, [])
 
   const salvaZona = useCallback(async (zona) => {
-    const tutte = (await db.getMeta('zone-vta')) || []
     const id = zona.id || crypto.randomUUID()
-    const aggiornata = { ...zona, id, created_at: zona.created_at || new Date().toISOString() }
-    const nuove = [...tutte.filter((z) => z.id !== id), aggiornata]
-    await db.setMeta('zone-vta', nuove)
-    setZone(nuove)
+    const record = {
+      id,
+      nome: zona.nome || '',
+      descrizione: zona.descrizione || '',
+      punti: zona.punti || [],
+      created_at: zona.created_at || new Date().toISOString(),
+    }
+    if (supabaseEnabled) {
+      const { error } = await supabase.from('zone').upsert(record)
+      if (error) throw new Error(error.message)
+    }
+    setZone((prec) => {
+      const nuove = [...prec.filter((z) => z.id !== id), record]
+      db.setMeta('zone-vta', nuove)
+      return nuove
+    })
     return id
   }, [])
 
   const eliminaZona = useCallback(async (id) => {
-    const rimaste = ((await db.getMeta('zone-vta')) || []).filter((z) => z.id !== id)
-    await db.setMeta('zone-vta', rimaste)
-    setZone(rimaste)
+    if (supabaseEnabled) {
+      const { error } = await supabase.from('zone').delete().eq('id', id)
+      if (error) throw new Error(error.message)
+    }
+    setZone((prec) => {
+      const rimaste = prec.filter((z) => z.id !== id)
+      db.setMeta('zone-vta', rimaste)
+      return rimaste
+    })
   }, [])
 
   const avviaSync = useCallback(async () => {
