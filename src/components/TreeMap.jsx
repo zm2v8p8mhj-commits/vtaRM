@@ -1,15 +1,35 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { CPC_META } from '../lib/constants'
 import { sintesiStato } from '../lib/cpc'
 import { generaSchedaPDF } from '../lib/pdf'
 
+// punto dentro poligono (ray casting). poly = array di [lat, lng]
+function dentroPoligono(lat, lng, poly) {
+  let dentro = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const yi = poly[i][0], xi = poly[i][1]
+    const yj = poly[j][0], xj = poly[j][1]
+    const taglia = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi
+    if (taglia) dentro = !dentro
+  }
+  return dentro
+}
+
 // Mappa Leaflet condivisa tra cruscotto admin e mappa pubblica dei comuni.
-// onModifica è presente solo nel cruscotto admin.
-export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '', onModifica }) {
+// onModifica e onReportArea sono presenti solo nel cruscotto admin.
+export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '', onModifica, onReportArea }) {
   const mapRef = useRef(null)
   const mapEl = useRef(null)
   const markersRef = useRef(null)
+
+  // disegno area: fase off | disegno | pronta
+  const [fase, setFase] = useState('off')
+  const [nPunti, setNPunti] = useState(0)
+  const [nDentro, setNDentro] = useState(0)
+  const puntiRef = useRef([])
+  const dentroRef = useRef([])
+  const disegnoRef = useRef(null) // layerGroup di vertici, linea e poligono
 
   useEffect(() => {
     if (mapRef.current) return
@@ -32,6 +52,7 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
       position: 'topright',
     }).addTo(map)
     markersRef.current = L.layerGroup().addTo(map)
+    disegnoRef.current = L.layerGroup().addTo(map)
     mapRef.current = map
 
     // etichette accanto ai pallini visibili solo da zoom 16 in su (meno confusione)
@@ -87,6 +108,67 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
     }
   }, [alberi]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ----------------------------------------------------- disegno area report
+  const ridisegna = () => {
+    const g = disegnoRef.current
+    if (!g) return
+    g.clearLayers()
+    const punti = puntiRef.current
+    if (punti.length) {
+      L.polyline(fase === 'pronta' ? [...punti, punti[0]] : punti, {
+        color: '#15803d',
+        weight: 2,
+        dashArray: fase === 'pronta' ? null : '5,5',
+      }).addTo(g)
+      if (fase === 'pronta') {
+        L.polygon(punti, { color: '#15803d', weight: 2, fillColor: '#15803d', fillOpacity: 0.1 }).addTo(g)
+      }
+      punti.forEach((p) =>
+        L.circleMarker(p, { radius: 4, color: '#15803d', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g)
+      )
+    }
+  }
+
+  const onClickArea = (e) => {
+    puntiRef.current = [...puntiRef.current, [e.latlng.lat, e.latlng.lng]]
+    setNPunti(puntiRef.current.length)
+    ridisegna()
+  }
+
+  const iniziaDisegno = () => {
+    puntiRef.current = []
+    dentroRef.current = []
+    setNPunti(0)
+    setNDentro(0)
+    setFase('disegno')
+    disegnoRef.current?.clearLayers()
+    mapRef.current.getContainer().style.cursor = 'crosshair'
+    mapRef.current.on('click', onClickArea)
+  }
+
+  const chiudiArea = () => {
+    if (puntiRef.current.length < 3) return
+    mapRef.current.off('click', onClickArea)
+    mapRef.current.getContainer().style.cursor = ''
+    setFase('pronta')
+    const poly = puntiRef.current
+    const dentro = alberi.filter((a) => a.lat != null && dentroPoligono(a.lat, a.lng, poly))
+    dentroRef.current = dentro
+    setNDentro(dentro.length)
+    setTimeout(ridisegna, 0)
+  }
+
+  const annullaArea = () => {
+    mapRef.current?.off('click', onClickArea)
+    if (mapRef.current) mapRef.current.getContainer().style.cursor = ''
+    puntiRef.current = []
+    dentroRef.current = []
+    setNPunti(0)
+    setNDentro(0)
+    setFase('off')
+    disegnoRef.current?.clearLayers()
+  }
+
   function creaPopup(albero) {
     const meta = CPC_META[albero.cpc] || CPC_META.A
     const foto = fotoDi(albero)
@@ -122,5 +204,75 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
     return div
   }
 
-  return <div ref={mapEl} className="h-full min-w-0 flex-1" />
+  return (
+    <div className="relative h-full min-w-0 flex-1">
+      <div ref={mapEl} className="h-full w-full" />
+
+      {/* controlli disegno area (solo cruscotto admin) */}
+      {onReportArea && (
+        <div className="absolute left-1/2 top-3 z-[1020] flex -translate-x-1/2 flex-col items-center gap-2">
+          {fase === 'off' && (
+            <button
+              onClick={iniziaDisegno}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-green-800 shadow-lg active:scale-95"
+            >
+              ✏️ Report per zona
+            </button>
+          )}
+
+          {fase === 'disegno' && (
+            <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-white/95 px-3 py-2 shadow-lg">
+              <p className="text-xs font-medium text-slate-600">
+                Tocca la mappa per disegnare l'area · {nPunti} punti
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={chiudiArea}
+                  disabled={nPunti < 3}
+                  className="rounded-full bg-green-700 px-4 py-1.5 text-sm font-semibold text-white shadow disabled:opacity-40"
+                >
+                  ✓ Chiudi area
+                </button>
+                <button
+                  onClick={annullaArea}
+                  className="rounded-full bg-slate-100 px-4 py-1.5 text-sm font-semibold text-slate-600"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          )}
+
+          {fase === 'pronta' && (
+            <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-white/95 px-3 py-2 shadow-lg">
+              <p className="text-xs font-medium text-slate-600">
+                {nDentro} alberi nell'area selezionata
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onReportArea(dentroRef.current)}
+                  disabled={nDentro === 0}
+                  className="rounded-full bg-green-700 px-4 py-1.5 text-sm font-semibold text-white shadow disabled:opacity-40"
+                >
+                  📄 Genera report ({nDentro})
+                </button>
+                <button
+                  onClick={iniziaDisegno}
+                  className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600"
+                >
+                  Ridisegna
+                </button>
+                <button
+                  onClick={annullaArea}
+                  className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600"
+                >
+                  Chiudi
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }

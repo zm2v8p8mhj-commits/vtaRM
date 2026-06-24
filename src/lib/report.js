@@ -39,17 +39,17 @@ function rank(a) {
 const dataIT = (v) => (v ? new Date(v).toLocaleDateString('it-IT') : '—')
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 
-export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fotoDettagli } = {}) {
+export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fotoDettagli, zonaEtichetta = '' } = {}) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let y = 0
 
   // intestazione minimale: filetto verde + titolo, ripetuta a ogni pagina
   const intestazione = () => {
     doc.setFont('helvetica', 'bold').setFontSize(13).setTextColor(...ACCENT)
-    doc.text('Report di sopralluogo VTA', MARGINE, 16)
+    doc.text(zonaEtichetta ? 'Report di zona VTA' : 'Report di sopralluogo VTA', MARGINE, 16)
     doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(...MUTE)
     doc.text(comuneNome || 'Committente', MARGINE, 21)
-    const periodo = dataDa || dataA ? `${dataIT(dataDa)} – ${dataIT(dataA)}` : 'Tutti i rilievi'
+    const periodo = zonaEtichetta || (dataDa || dataA ? `${dataIT(dataDa)} – ${dataIT(dataA)}` : 'Tutti i rilievi')
     doc.text(`${periodo}  ·  emesso il ${new Date().toLocaleDateString('it-IT')}`, 210 - MARGINE, 21, { align: 'right' })
     doc.setDrawColor(...ACCENT).setLineWidth(0.6)
     doc.line(MARGINE, 24, 210 - MARGINE, 24)
@@ -120,7 +120,11 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
   paragrafo(
     `Il presente documento riepiloga i rilievi di stabilità arborea eseguiti per ` +
       `${comuneNome || 'la committenza'}${
-        dataDa || dataA ? ` nel periodo ${dataIT(dataDa)} – ${dataIT(dataA)}` : ''
+        zonaEtichetta
+          ? ' nell\'area selezionata sulla mappa'
+          : dataDa || dataA
+            ? ` nel periodo ${dataIT(dataDa)} – ${dataIT(dataA)}`
+            : ''
       }, per complessivi ${alberi.length} esemplari valutati.`
   )
   paragrafo(
@@ -265,8 +269,8 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
     y += 2
   }
 
-  // ---- elenco completo del periodo
-  sezione('Elenco completo del periodo')
+  // ---- elenco completo
+  sezione(zonaEtichetta ? 'Elenco completo dell\'area' : 'Elenco completo del periodo')
   const col = [MARGINE, MARGINE + 26, MARGINE + 42, MARGINE + 96, MARGINE + 138, MARGINE + 150, MARGINE + 168]
   const header = () => {
     doc.setFont('helvetica', 'bold').setFontSize(7.5).setTextColor(...MUTE)

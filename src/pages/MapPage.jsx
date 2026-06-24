@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { CPC_CLASSI, CPC_META } from '../lib/constants'
 import { downloadGeoJSON } from '../lib/geojson'
+import { generaReport } from '../lib/report'
 import TreeMap from '../components/TreeMap'
 import CpcBadge from '../components/CpcBadge'
 
@@ -46,6 +47,18 @@ export default function MapPage() {
     for (const a of alberi) if (c[a.cpc] != null) c[a.cpc]++
     return c
   }, [alberi])
+
+  // report degli alberi che cadono dentro l'area disegnata sulla mappa
+  const reportArea = async (dentro) => {
+    if (!dentro?.length) return
+    const idComuni = new Set(dentro.map((a) => a.comune_id))
+    const comuneNome = filtri.comune
+      ? comuni.find((c) => c.id === filtri.comune)?.nome || 'Area selezionata'
+      : idComuni.size === 1
+        ? comuni.find((c) => c.id === [...idComuni][0])?.nome || 'Area selezionata'
+        : 'Area selezionata'
+    await generaReport(dentro, { comuneNome, zonaEtichetta: 'Area selezionata sulla mappa', fotoDettagli })
+  }
 
   const toggleCpc = (classe) =>
     setFiltri((f) => ({
@@ -227,6 +240,7 @@ export default function MapPage() {
         fotoDi={fotoDi}
         fotoDettagli={fotoDettagli}
         onModifica={(albero) => navigate(`/rilievo/${albero.id}`)}
+        onReportArea={reportArea}
       />
 
       {/* messaggio guida quando non c'è ancora nessun albero censito.
