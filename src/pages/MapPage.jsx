@@ -15,6 +15,8 @@ export default function MapPage() {
   const [filtri, setFiltri] = useState(FILTRI_INIZIALI)
   // su telefono la sidebar parte chiusa e si apre sopra la mappa (overlay)
   const [sidebarAperta, setSidebarAperta] = useState(() => window.innerWidth >= 640)
+  // le zone sono uno strumento "da studio": disponibili solo su schermo grande (PC)
+  const [isPC, setIsPC] = useState(() => window.innerWidth >= 1024)
 
   // modal report/zona: { punti, dentro, zona } | null
   const [areaSel, setAreaSel] = useState(null)
@@ -32,7 +34,13 @@ export default function MapPage() {
     const media = window.matchMedia('(min-width: 640px)')
     const aggiornaLayout = (evento) => setSidebarAperta(evento.matches)
     media.addEventListener('change', aggiornaLayout)
-    return () => media.removeEventListener('change', aggiornaLayout)
+    const mediaPC = window.matchMedia('(min-width: 1024px)')
+    const aggiornaPC = (evento) => setIsPC(evento.matches)
+    mediaPC.addEventListener('change', aggiornaPC)
+    return () => {
+      media.removeEventListener('change', aggiornaLayout)
+      mediaPC.removeEventListener('change', aggiornaPC)
+    }
   }, [])
 
   const specieDisponibili = useMemo(
@@ -280,8 +288,8 @@ export default function MapPage() {
         fotoDi={fotoDi}
         fotoDettagli={fotoDettagli}
         onModifica={(albero) => navigate(`/rilievo/${albero.id}`)}
-        onArea={setAreaSel}
-        zone={zone}
+        onArea={isPC ? setAreaSel : undefined}
+        zone={isPC ? zone : []}
       />
 
       {/* messaggio guida quando non c'è ancora nessun albero censito.
