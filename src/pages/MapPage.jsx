@@ -10,11 +10,23 @@ import CpcBadge from '../components/CpcBadge'
 const FILTRI_INIZIALI = { cpc: [...CPC_CLASSI], specie: '', comune: '', ricerca: '' }
 
 export default function MapPage() {
-  const { alberi, comuni, fotoDi, fotoDettagli } = useApp()
+  const { alberi, comuni, fotoDi, fotoDettagli, zone, salvaZona, eliminaZona } = useApp()
   const navigate = useNavigate()
   const [filtri, setFiltri] = useState(FILTRI_INIZIALI)
   // su telefono la sidebar parte chiusa e si apre sopra la mappa (overlay)
   const [sidebarAperta, setSidebarAperta] = useState(() => window.innerWidth >= 640)
+
+  // modal report/zona: { punti, dentro, zona } | null
+  const [areaSel, setAreaSel] = useState(null)
+  const [nomeZona, setNomeZona] = useState('')
+  const [descrZona, setDescrZona] = useState('')
+  const [genInCorso, setGenInCorso] = useState(false)
+
+  useEffect(() => {
+    if (!areaSel) return
+    setNomeZona(areaSel.zona?.nome || '')
+    setDescrZona(areaSel.zona?.descrizione || '')
+  }, [areaSel])
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 640px)')
@@ -48,16 +60,44 @@ export default function MapPage() {
     return c
   }, [alberi])
 
-  // report degli alberi che cadono dentro l'area disegnata sulla mappa
-  const reportArea = async (dentro) => {
-    if (!dentro?.length) return
-    const idComuni = new Set(dentro.map((a) => a.comune_id))
-    const comuneNome = filtri.comune
-      ? comuni.find((c) => c.id === filtri.comune)?.nome || 'Area selezionata'
-      : idComuni.size === 1
-        ? comuni.find((c) => c.id === [...idComuni][0])?.nome || 'Area selezionata'
-        : 'Area selezionata'
-    await generaReport(dentro, { comuneNome, zonaEtichetta: 'Area selezionata sulla mappa', fotoDettagli })
+  // committente da mostrare nel report: il filtro attivo, oppure l'unico
+  // committente degli alberi nell'area, altrimenti generico
+  const committenteArea = (dentro) => {
+    if (filtri.comune) return comuni.find((c) => c.id === filtri.comune)?.nome || 'Area selezionata'
+    const ids = new Set(dentro.map((a) => a.comune_id))
+    return ids.size === 1
+      ? comuni.find((c) => c.id === [...ids][0])?.nome || 'Area selezionata'
+      : 'Area selezionata'
+  }
+
+  const generaReportZona = async () => {
+    if (!areaSel?.dentro?.length) return
+    setGenInCorso(true)
+    try {
+      await generaReport(areaSel.dentro, {
+        comuneNome: committenteArea(areaSel.dentro),
+        zonaEtichetta: nomeZona.trim() ? `Zona: ${nomeZona.trim()}` : 'Area selezionata sulla mappa',
+        descrizioneGenerale: descrZona,
+        fotoDettagli,
+      })
+    } finally {
+      setGenInCorso(false)
+    }
+  }
+
+  const salvaZonaCorrente = async () => {
+    await salvaZona({
+      id: areaSel.zona?.id,
+      nome: nomeZona.trim() || 'Zona senza nome',
+      descrizione: descrZona,
+      punti: areaSel.punti,
+    })
+    setAreaSel(null)
+  }
+
+  const eliminaZonaCorrente = async () => {
+    if (areaSel?.zona?.id) await eliminaZona(areaSel.zona.id)
+    setAreaSel(null)
   }
 
   const toggleCpc = (classe) =>
@@ -240,7 +280,8 @@ export default function MapPage() {
         fotoDi={fotoDi}
         fotoDettagli={fotoDettagli}
         onModifica={(albero) => navigate(`/rilievo/${albero.id}`)}
-        onReportArea={reportArea}
+        onArea={setAreaSel}
+        zone={zone}
       />
 
       {/* messaggio guida quando non c'è ancora nessun albero censito.
@@ -270,6 +311,74 @@ export default function MapPage() {
       >
         +
       </button>
+
+      {/* ----------------------------------------- modal report / salvataggio zona */}
+      {areaSel && (
+        <div
+          className="fixed inset-0 flex items-end justify-center bg-slate-950/40 p-0 sm:items-center sm:p-4"
+          style={{ zIndex: 2000 }}
+          onClick={() => setAreaSel(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="font-bold text-green-900">
+                {areaSel.zona ? 'Zona salvata' : 'Nuova zona'}
+              </h3>
+              <button
+                className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-500"
+                onClick={() => setAreaSel(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mb-3 text-xs text-slate-500">
+              {areaSel.dentro.length} alberi nell'area
+            </p>
+
+            <label className="mb-1 block text-xs font-medium text-slate-600">Nome zona</label>
+            <input
+              className="field mb-3"
+              placeholder="es. Villa Comunale, Viale della stazione…"
+              value={nomeZona}
+              onChange={(e) => setNomeZona(e.target.value)}
+            />
+
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              Descrizione generale dello stato del verde
+            </label>
+            <textarea
+              className="field mb-4 h-28 resize-none"
+              placeholder="Quadro d'insieme della zona: specie prevalenti, stato vegetativo, criticità ricorrenti, indicazioni gestionali generali…"
+              value={descrZona}
+              onChange={(e) => setDescrZona(e.target.value)}
+            />
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="btn-primary flex-1"
+                disabled={genInCorso || areaSel.dentro.length === 0}
+                onClick={generaReportZona}
+              >
+                {genInCorso ? 'Generazione…' : `📄 Genera report (${areaSel.dentro.length})`}
+              </button>
+              <button className="btn-secondary" onClick={salvaZonaCorrente}>
+                💾 {areaSel.zona ? 'Aggiorna zona' : 'Salva zona'}
+              </button>
+            </div>
+            {areaSel.zona && (
+              <button
+                className="mt-3 w-full text-xs font-semibold text-red-700 underline"
+                onClick={eliminaZonaCorrente}
+              >
+                Elimina questa zona
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

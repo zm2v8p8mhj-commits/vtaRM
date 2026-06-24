@@ -17,19 +17,34 @@ function dentroPoligono(lat, lng, poly) {
 }
 
 // Mappa Leaflet condivisa tra cruscotto admin e mappa pubblica dei comuni.
-// onModifica e onReportArea sono presenti solo nel cruscotto admin.
-export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '', onModifica, onReportArea }) {
+// onModifica e onArea sono presenti solo nel cruscotto admin.
+export default function TreeMap({
+  alberi,
+  fotoDi,
+  fotoDettagli,
+  nomeComune = '',
+  onModifica,
+  onArea, // ({ punti, dentro, zona }) => apre il modal report/zona
+  zone = [],
+}) {
   const mapRef = useRef(null)
   const mapEl = useRef(null)
   const markersRef = useRef(null)
 
-  // disegno area: fase off | disegno | pronta
+  // disegno area: fase off | disegno
   const [fase, setFase] = useState('off')
   const [nPunti, setNPunti] = useState(0)
-  const [nDentro, setNDentro] = useState(0)
   const puntiRef = useRef([])
-  const dentroRef = useRef([])
-  const disegnoRef = useRef(null) // layerGroup di vertici, linea e poligono
+  const disegnoRef = useRef(null) // layerGroup di vertici e linea in tracciamento
+  const zoneRef = useRef(null) // layerGroup dei poligoni delle zone salvate
+
+  // ref aggiornate a ogni render: le usano gli handler Leaflet per evitare closure stantii
+  const alberiRef = useRef(alberi)
+  alberiRef.current = alberi
+  const onAreaRef = useRef(onArea)
+  onAreaRef.current = onArea
+  const faseRef = useRef(fase)
+  faseRef.current = fase
 
   useEffect(() => {
     if (mapRef.current) return
@@ -51,6 +66,7 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
     L.control.layers({ 'Mappa stradale': osm, Satellite: satellite }, null, {
       position: 'topright',
     }).addTo(map)
+    zoneRef.current = L.layerGroup().addTo(map)
     markersRef.current = L.layerGroup().addTo(map)
     disegnoRef.current = L.layerGroup().addTo(map)
     mapRef.current = map
@@ -108,25 +124,46 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
     }
   }, [alberi]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // poligoni delle zone salvate: cliccabili per generare/aprire il report
+  useEffect(() => {
+    const g = zoneRef.current
+    if (!g) return
+    g.clearLayers()
+    for (const z of zone) {
+      if (!z.punti?.length) continue
+      const poly = L.polygon(z.punti, {
+        color: '#0369a1',
+        weight: 2,
+        dashArray: '4,4',
+        fillColor: '#0ea5e9',
+        fillOpacity: 0.08,
+      })
+      poly.bindTooltip(z.nome || 'Zona', {
+        permanent: true,
+        direction: 'center',
+        className: 'etichetta-zona',
+      })
+      poly.on('click', (e) => {
+        if (faseRef.current !== 'off') return // in disegno non interferire
+        L.DomEvent.stop(e)
+        const dentro = alberiRef.current.filter((a) => a.lat != null && dentroPoligono(a.lat, a.lng, z.punti))
+        onAreaRef.current?.({ punti: z.punti, dentro, zona: z })
+      })
+      g.addLayer(poly)
+    }
+  }, [zone])
+
   // ----------------------------------------------------- disegno area report
   const ridisegna = () => {
     const g = disegnoRef.current
     if (!g) return
     g.clearLayers()
     const punti = puntiRef.current
-    if (punti.length) {
-      L.polyline(fase === 'pronta' ? [...punti, punti[0]] : punti, {
-        color: '#15803d',
-        weight: 2,
-        dashArray: fase === 'pronta' ? null : '5,5',
-      }).addTo(g)
-      if (fase === 'pronta') {
-        L.polygon(punti, { color: '#15803d', weight: 2, fillColor: '#15803d', fillOpacity: 0.1 }).addTo(g)
-      }
-      punti.forEach((p) =>
-        L.circleMarker(p, { radius: 4, color: '#15803d', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g)
-      )
-    }
+    if (!punti.length) return
+    L.polyline(punti, { color: '#15803d', weight: 2, dashArray: '5,5' }).addTo(g)
+    punti.forEach((p) =>
+      L.circleMarker(p, { radius: 4, color: '#15803d', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g)
+    )
   }
 
   const onClickArea = (e) => {
@@ -137,9 +174,7 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
 
   const iniziaDisegno = () => {
     puntiRef.current = []
-    dentroRef.current = []
     setNPunti(0)
-    setNDentro(0)
     setFase('disegno')
     disegnoRef.current?.clearLayers()
     mapRef.current.getContainer().style.cursor = 'crosshair'
@@ -150,21 +185,21 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
     if (puntiRef.current.length < 3) return
     mapRef.current.off('click', onClickArea)
     mapRef.current.getContainer().style.cursor = ''
-    setFase('pronta')
-    const poly = puntiRef.current
-    const dentro = alberi.filter((a) => a.lat != null && dentroPoligono(a.lat, a.lng, poly))
-    dentroRef.current = dentro
-    setNDentro(dentro.length)
-    setTimeout(ridisegna, 0)
+    const punti = puntiRef.current
+    const dentro = alberi.filter((a) => a.lat != null && dentroPoligono(a.lat, a.lng, punti))
+    // pulizia tracciamento: il modal (in MapPage) tiene i dati
+    puntiRef.current = []
+    setNPunti(0)
+    setFase('off')
+    disegnoRef.current?.clearLayers()
+    onArea?.({ punti, dentro, zona: null })
   }
 
   const annullaArea = () => {
     mapRef.current?.off('click', onClickArea)
     if (mapRef.current) mapRef.current.getContainer().style.cursor = ''
     puntiRef.current = []
-    dentroRef.current = []
     setNPunti(0)
-    setNDentro(0)
     setFase('off')
     disegnoRef.current?.clearLayers()
   }
@@ -209,14 +244,15 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
       <div ref={mapEl} className="h-full w-full" />
 
       {/* controlli disegno area (solo cruscotto admin) */}
-      {onReportArea && (
+      {onArea && (
         <div className="absolute left-1/2 top-3 z-[1020] flex -translate-x-1/2 flex-col items-center gap-2">
           {fase === 'off' && (
             <button
               onClick={iniziaDisegno}
               className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-green-800 shadow-lg active:scale-95"
+              title="Disegna una nuova area, oppure tocca una zona salvata sulla mappa"
             >
-              ✏️ Report per zona
+              ✏️ Nuova zona
             </button>
           )}
 
@@ -243,34 +279,6 @@ export default function TreeMap({ alberi, fotoDi, fotoDettagli, nomeComune = '',
             </div>
           )}
 
-          {fase === 'pronta' && (
-            <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-white/95 px-3 py-2 shadow-lg">
-              <p className="text-xs font-medium text-slate-600">
-                {nDentro} alberi nell'area selezionata
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onReportArea(dentroRef.current)}
-                  disabled={nDentro === 0}
-                  className="rounded-full bg-green-700 px-4 py-1.5 text-sm font-semibold text-white shadow disabled:opacity-40"
-                >
-                  📄 Genera report ({nDentro})
-                </button>
-                <button
-                  onClick={iniziaDisegno}
-                  className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600"
-                >
-                  Ridisegna
-                </button>
-                <button
-                  onClick={annullaArea}
-                  className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600"
-                >
-                  Chiudi
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

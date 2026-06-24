@@ -48,6 +48,23 @@ body {
   display: none;
 }
 
+/* etichetta col nome della zona salvata, al centro del poligono */
+.etichetta-zona.leaflet-tooltip {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #0ea5e9;
+  box-shadow: none;
+  color: #075985;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.etichetta-zona.leaflet-tooltip::before {
+  display: none;
+}
+
 /* Campi form coerenti in tutta l'app */
 .field {
   @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm

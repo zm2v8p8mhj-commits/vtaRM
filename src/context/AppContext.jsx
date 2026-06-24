@@ -28,6 +28,7 @@ export function AppProvider({ children }) {
   const [alberi, setAlberi] = useState([])
   const [comuni, setComuni] = useState([])
   const [fotoLocali, setFotoLocali] = useState({}) // alberoId -> [{id,url}]
+  const [zone, setZone] = useState([]) // aree disegnate salvate (locali al dispositivo)
   const [syncInfo, setSyncInfo] = useState({ inCorso: false, esito: null })
 
   // ------------------------------------------------------------------ auth
@@ -115,6 +116,29 @@ export function AppProvider({ children }) {
     setComuni(data || [])
   }, [])
 
+  // ---------------------------------------------------------------- zone salvate
+  // Persistite in IndexedDB (meta 'zone-vta'): restano sul dispositivo tra le
+  // sessioni. Forma: { id, nome, descrizione, punti: [[lat,lng],...], created_at }
+  const caricaZone = useCallback(async () => {
+    setZone((await db.getMeta('zone-vta')) || [])
+  }, [])
+
+  const salvaZona = useCallback(async (zona) => {
+    const tutte = (await db.getMeta('zone-vta')) || []
+    const id = zona.id || crypto.randomUUID()
+    const aggiornata = { ...zona, id, created_at: zona.created_at || new Date().toISOString() }
+    const nuove = [...tutte.filter((z) => z.id !== id), aggiornata]
+    await db.setMeta('zone-vta', nuove)
+    setZone(nuove)
+    return id
+  }, [])
+
+  const eliminaZona = useCallback(async (id) => {
+    const rimaste = ((await db.getMeta('zone-vta')) || []).filter((z) => z.id !== id)
+    await db.setMeta('zone-vta', rimaste)
+    setZone(rimaste)
+  }, [])
+
   const avviaSync = useCallback(async () => {
     if (!supabaseEnabled) return
     setSyncInfo({ inCorso: true, esito: null })
@@ -140,6 +164,7 @@ export function AppProvider({ children }) {
       }
       await ricaricaLocale()
       await caricaComuni()
+      await caricaZone()
       avviaSync()
     })()
     // sincronizza al ritorno online e quando si riapre l'app (riporta in primo piano)
@@ -152,7 +177,7 @@ export function AppProvider({ children }) {
       window.removeEventListener('online', avviaSync)
       document.removeEventListener('visibilitychange', alRitorno)
     }
-  }, [utente, ricaricaLocale, caricaComuni, avviaSync])
+  }, [utente, ricaricaLocale, caricaComuni, caricaZone, avviaSync])
 
   const fotoDi = useCallback(
     (albero) => [
@@ -292,6 +317,9 @@ export function AppProvider({ children }) {
     importaAlberi,
     creaComune,
     rigeneraToken,
+    zone,
+    salvaZona,
+    eliminaZona,
     syncInfo,
     avviaSync,
     nonSincronizzati: alberi.filter((a) => a._synced === false).length,

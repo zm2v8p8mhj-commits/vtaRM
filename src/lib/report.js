@@ -39,7 +39,10 @@ function rank(a) {
 const dataIT = (v) => (v ? new Date(v).toLocaleDateString('it-IT') : '—')
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 
-export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fotoDettagli, zonaEtichetta = '' } = {}) {
+export async function generaReport(
+  alberi,
+  { comuneNome = '', dataDa, dataA, fotoDettagli, zonaEtichetta = '', descrizioneGenerale = '' } = {}
+) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let y = 0
 
@@ -166,6 +169,12 @@ export async function generaReport(alberi, { comuneNome = '', dataDa, dataA, fot
   doc.text('A Trascurabile · B Bassa · C Moderata · C/D Elevata · D Estrema', MARGINE, y)
   doc.setTextColor(0)
   y += 4
+
+  // ---- stato generale del verde (descrizione discorsiva del tecnico)
+  if (descrizioneGenerale && descrizioneGenerale.trim()) {
+    sezione('Stato generale del verde')
+    paragrafo(descrizioneGenerale.trim())
+  }
 
   // ---- interventi prioritari
   if (prioritari.length) {
