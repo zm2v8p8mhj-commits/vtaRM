@@ -178,13 +178,21 @@ export async function generaReport(
   // ---- inquadramento dell'area (mappa satellitare con poligono ed etichette)
   if (zonaPunti && zonaPunti.length >= 3) {
     const mappa = await mappaZonaDataURL(zonaPunti, alberi)
-    if (mappa) {
+    if (mappa && mappa.url) {
       sezione('Inquadramento dell\'area')
-      const w = LARGHEZZA
-      const h = (w * 470) / 780
+      // l'immagine è ritagliata sull'area: si rispetta il suo rapporto, con
+      // un'altezza massima in pagina per non sforare (in tal caso si riduce la larghezza)
+      let w = LARGHEZZA
+      let h = (w * mappa.h) / mappa.w
+      const hMax = 180
+      if (h > hMax) {
+        w = (hMax * mappa.w) / mappa.h
+        h = hMax
+      }
+      const x = MARGINE + (LARGHEZZA - w) / 2
       controllaPagina(h + 2)
       try {
-        doc.addImage(mappa, 'JPEG', MARGINE, y, w, h)
+        doc.addImage(mappa.url, 'JPEG', x, y, w, h)
       } catch {
         /* ignora */
       }

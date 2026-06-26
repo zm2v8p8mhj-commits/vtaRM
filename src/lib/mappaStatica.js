@@ -38,7 +38,7 @@ function pill(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
-async function disegna(punti, alberi, { larghezza, altezza, padding, satellite }) {
+async function disegna(punti, alberi, { budgetW, budgetH, padding, satellite }) {
   const conCoord = alberi.filter((a) => a.lat != null && a.lng != null)
   const lats = [...punti.map((p) => p[0]), ...conCoord.map((a) => a.lat)]
   const lngs = [...punti.map((p) => p[1]), ...conCoord.map((a) => a.lng)]
@@ -49,17 +49,20 @@ async function disegna(punti, alberi, { larghezza, altezza, padding, satellite }
   minLat -= dLat * padding; maxLat += dLat * padding
   minLng -= dLng * padding; maxLng += dLng * padding
 
-  // zoom più ravvicinato in cui l'intera area rientra nel riquadro
+  // zoom MASSIMO in cui l'intera area rientra nel budget di pixel disponibile
   const zMax = satellite ? 19 : 18
   let z = zMax
   for (; z >= 2; z--) {
     const w = (lon2x(maxLng, z) - lon2x(minLng, z)) * TILE
     const h = (lat2y(minLat, z) - lat2y(maxLat, z)) * TILE
-    if (w <= larghezza && h <= altezza) break
+    if (w <= budgetW && h <= budgetH) break
   }
 
-  const left = lon2x((minLng + maxLng) / 2, z) * TILE - larghezza / 2
-  const top = lat2y((minLat + maxLat) / 2, z) * TILE - altezza / 2
+  // canvas ritagliato ESATTAMENTE sull'area (niente bande vuote): l'area riempie
+  const left = lon2x(minLng, z) * TILE
+  const top = lat2y(maxLat, z) * TILE
+  const larghezza = Math.max(64, Math.round((lon2x(maxLng, z) - lon2x(minLng, z)) * TILE))
+  const altezza = Math.max(64, Math.round((lat2y(minLat, z) - lat2y(maxLat, z)) * TILE))
 
   const canvas = document.createElement('canvas')
   canvas.width = larghezza
@@ -161,15 +164,15 @@ async function disegna(punti, alberi, { larghezza, altezza, padding, satellite }
   ctx.fillText(attr, larghezza - tw - 4, altezza - 4)
 
   try {
-    return canvas.toDataURL('image/jpeg', 0.92)
+    return { url: canvas.toDataURL('image/jpeg', 0.92), w: larghezza, h: altezza }
   } catch {
     return null
   }
 }
 
-export async function mappaZonaDataURL(punti, alberi = [], { larghezza = 780, altezza = 470, padding = 0.14 } = {}) {
+export async function mappaZonaDataURL(punti, alberi = [], { budgetW = 900, budgetH = 620, padding = 0.1 } = {}) {
   if (!punti || punti.length < 3) return null
-  const sat = await disegna(punti, alberi, { larghezza, altezza, padding, satellite: true })
+  const sat = await disegna(punti, alberi, { budgetW, budgetH, padding, satellite: true })
   if (sat) return sat
-  return disegna(punti, alberi, { larghezza, altezza, padding, satellite: false })
+  return disegna(punti, alberi, { budgetW, budgetH, padding, satellite: false })
 }
