@@ -27,6 +27,7 @@ export const GRAVITA = [
 export const SPECIE = [
   'Pinus pinea', 'Pinus halepensis', 'Quercus ilex', 'Quercus pubescens',
   'Olea europaea', 'Tilia spp.', 'Platanus x acerifolia', 'Cupressus sempervirens',
+  'Cupressus arizonica',
   'Celtis australis', 'Robinia pseudoacacia', 'Washingtonia robusta',
   'Phoenix dactylifera', 'Phoenix canariensis', 'Chamaerops humilis',
   'Eucalyptus camaldulensis', 'Melia azedarach', 'Ficus retusa',
