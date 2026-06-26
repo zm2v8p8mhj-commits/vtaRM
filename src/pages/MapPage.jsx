@@ -371,7 +371,7 @@ export default function MapPage() {
                 disabled={genInCorso || areaSel.dentro.length === 0}
                 onClick={generaReportZona}
               >
-                {genInCorso ? 'Generazione…' : `📄 Genera report (${areaSel.dentro.length})`}
+                {genInCorso ? 'Generazione…' : `📄 Genera verbale (${areaSel.dentro.length})`}
               </button>
               <button className="btn-secondary" onClick={salvaZonaCorrente}>
                 💾 {areaSel.zona ? 'Aggiorna zona' : 'Salva zona'}

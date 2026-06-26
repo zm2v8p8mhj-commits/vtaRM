@@ -46,11 +46,14 @@ export async function generaReport(
 ) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let y = 0
+  // i report di zona sono "Verbali di sopralluogo"
+  const verbale = Boolean(zonaEtichetta)
+  const docTipo = verbale ? 'Verbale di sopralluogo' : 'Report di sopralluogo VTA'
 
   // intestazione minimale: filetto verde + titolo, ripetuta a ogni pagina
   const intestazione = () => {
     doc.setFont('helvetica', 'bold').setFontSize(13).setTextColor(...ACCENT)
-    doc.text(zonaEtichetta ? 'Report di zona VTA' : 'Report di sopralluogo VTA', MARGINE, 16)
+    doc.text(docTipo, MARGINE, 16)
     doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(...MUTE)
     doc.text(comuneNome || 'Committente', MARGINE, 21)
     const periodo = zonaEtichetta || (dataDa || dataA ? `${dataIT(dataDa)} – ${dataIT(dataA)}` : 'Tutti i rilievi')
@@ -122,10 +125,11 @@ export async function generaReport(
   // ---- oggetto + premessa
   sezione('Oggetto e premessa metodologica')
   paragrafo(
-    `Il presente documento riepiloga i rilievi di stabilità arborea eseguiti per ` +
+    `Il presente ${verbale ? 'verbale' : 'documento'} riepiloga ` +
+      `${verbale ? 'il sopralluogo di stabilità arborea eseguito' : 'i rilievi di stabilità arborea eseguiti'} per ` +
       `${comuneNome || 'la committenza'}${
-        zonaEtichetta
-          ? ' nell\'area selezionata sulla mappa'
+        verbale
+          ? ' nell\'area perimetrata in cartografia'
           : dataDa || dataA
             ? ` nel periodo ${dataIT(dataDa)} – ${dataIT(dataA)}`
             : ''
@@ -171,13 +175,13 @@ export async function generaReport(
   doc.setTextColor(0)
   y += 4
 
-  // ---- inquadramento dell'area (mappa statica con poligono e alberi)
+  // ---- inquadramento dell'area (mappa satellitare con poligono ed etichette)
   if (zonaPunti && zonaPunti.length >= 3) {
-    const mappa = await mappaZonaDataURL(zonaPunti, alberi, { larghezza: 760, altezza: 430 })
+    const mappa = await mappaZonaDataURL(zonaPunti, alberi)
     if (mappa) {
       sezione('Inquadramento dell\'area')
       const w = LARGHEZZA
-      const h = (w * 430) / 760
+      const h = (w * 470) / 780
       controllaPagina(h + 2)
       try {
         doc.addImage(mappa, 'JPEG', MARGINE, y, w, h)
@@ -186,9 +190,43 @@ export async function generaReport(
       }
       y += h + 2
       doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(...MUTE)
-      doc.text('Perimetro indicativo dell\'area; i punti rappresentano gli esemplari valutati (colore = classe CPC).', MARGINE, y)
+      doc.text('Ortofoto satellitare; perimetro dell\'area in giallo, esemplari con il numero di scheda e colore secondo la classe CPC.', MARGINE, y)
       doc.setTextColor(0)
       y += 4
+    }
+  }
+
+  // ---- legenda classi CPC, in linguaggio comprensibile a chiunque
+  if (verbale) {
+    const DESCR = {
+      A: 'Albero in buone condizioni e stabile. Nessun intervento necessario: è sufficiente il controllo ordinario.',
+      B: 'Lievi difetti, situazione sotto controllo. Si raccomanda solo un monitoraggio periodico.',
+      C: 'Difetti significativi da tenere sotto osservazione. Possibili interventi e controlli più frequenti.',
+      'C/D': 'Condizioni preoccupanti. Servono interventi e/o accertamenti strumentali in tempi brevi.',
+      D: 'Elevata probabilità di cedimento. Intervento urgente di messa in sicurezza o abbattimento.',
+    }
+    sezione('Legenda — classi di propensione al cedimento (CPC)')
+    paragrafo(
+      'La classe CPC esprime quanto è probabile che l\'albero, o una sua parte, possa cedere. È la scala che ' +
+        'guida priorità e urgenza degli interventi; di seguito il significato di ciascuna classe.',
+      MUTE,
+      8.4
+    )
+    for (const c of ['A', 'B', 'C', 'C/D', 'D']) {
+      const m = CPC_META[c]
+      const [r, g, b] = hex(m.color)
+      const righe = doc.splitTextToSize(DESCR[c], MARGINE + LARGHEZZA - (MARGINE + 42))
+      controllaPagina(Math.max(righe.length * 4.2, 6) + 2)
+      doc.setFillColor(r, g, b)
+      doc.roundedRect(MARGINE, y - 3.4, 8, 5, 1, 1, 'F')
+      doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(7.5)
+      doc.text(c, MARGINE + 4, y, { align: 'center' })
+      doc.setTextColor(...INK).setFont('helvetica', 'bold').setFontSize(8.8)
+      doc.text(m.breve, MARGINE + 12, y)
+      doc.setFont('helvetica', 'normal').setTextColor(...MUTE).setFontSize(8.4)
+      doc.text(righe, MARGINE + 42, y)
+      doc.setTextColor(0)
+      y += Math.max(righe.length * 4.2, 5) + 1.6
     }
   }
 
@@ -348,7 +386,7 @@ export async function generaReport(
   sezione('Conclusioni')
   paragrafo(
     'Si raccomanda di dare seguito agli interventi prioritari nei tempi indicati e di programmare gli ' +
-      'altri secondo le scadenze di ricontrollo riportate. Il presente report non sostituisce la ' +
+      `altri secondo le scadenze di ricontrollo riportate. Il presente ${verbale ? 'verbale' : 'documento'} non sostituisce la ` +
       'relazione tecnica conclusiva, alla quale si rinvia per le valutazioni di dettaglio e le eventuali ' +
       'indagini strumentali di approfondimento.'
   )
@@ -371,12 +409,13 @@ export async function generaReport(
     doc.setDrawColor(...LINE).setLineWidth(0.2)
     doc.line(MARGINE, 286, 210 - MARGINE, 286)
     doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(...MUTE)
-    doc.text(`${comuneNome || 'Committente'} · Report VTA`, MARGINE, 290)
+    doc.text(`${comuneNome || 'Committente'} · ${verbale ? 'Verbale di sopralluogo' : 'Report VTA'}`, MARGINE, 290)
     doc.text(`${TECNICO}`, 105, 290, { align: 'center' })
     doc.text(`pag. ${i}/${pagine}`, 210 - MARGINE, 290, { align: 'right' })
     doc.setTextColor(0)
   }
 
   const slug = (comuneNome || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
-  doc.save(`Report_VTA_${slug}_${new Date().toISOString().slice(0, 10)}.pdf`)
+  const prefisso = verbale ? 'Verbale_sopralluogo' : 'Report_VTA'
+  doc.save(`${prefisso}_${slug}_${new Date().toISOString().slice(0, 10)}.pdf`)
 }
