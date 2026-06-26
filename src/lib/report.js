@@ -71,9 +71,11 @@ export async function generaReport(
     }
   }
 
-  // titolo di sezione: testo verde + sottile filetto, niente riquadro pieno
-  const sezione = (t) => {
-    controllaPagina(14)
+  // titolo di sezione: testo verde + sottile filetto, niente riquadro pieno.
+  // riservo spazio per l'intestazione + alcune righe, così non resta "orfana"
+  // a fondo pagina (con il contenuto che scivola alla pagina dopo).
+  const sezione = (t, riserva = 24) => {
+    controllaPagina(riserva)
     y += 3
     doc.setFont('helvetica', 'bold').setFontSize(10.5).setTextColor(...ACCENT)
     doc.text(t.toUpperCase(), MARGINE, y)
@@ -179,24 +181,25 @@ export async function generaReport(
   if (zonaPunti && zonaPunti.length >= 3) {
     const mappa = await mappaZonaDataURL(zonaPunti, alberi)
     if (mappa && mappa.url) {
-      sezione('Inquadramento dell\'area')
       // l'immagine è ritagliata sull'area: si rispetta il suo rapporto, con
-      // un'altezza massima in pagina per non sforare (in tal caso si riduce la larghezza)
+      // un'altezza contenuta per non far "dominare" la mappa (max ~105 mm)
       let w = LARGHEZZA
       let h = (w * mappa.h) / mappa.w
-      const hMax = 180
+      const hMax = 105
       if (h > hMax) {
         w = (hMax * mappa.w) / mappa.h
         h = hMax
       }
       const x = MARGINE + (LARGHEZZA - w) / 2
-      controllaPagina(h + 2)
+      // header + mappa + didascalia tenuti insieme sulla stessa pagina
+      controllaPagina(h + 20)
+      sezione('Inquadramento dell\'area', 0)
       try {
         doc.addImage(mappa.url, 'JPEG', x, y, w, h)
       } catch {
         /* ignora */
       }
-      y += h + 2
+      y += h + 2.5
       doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(...MUTE)
       doc.text('Ortofoto satellitare; perimetro dell\'area in giallo, esemplari con il numero di scheda e colore secondo la classe CPC.', MARGINE, y)
       doc.setTextColor(0)
@@ -268,10 +271,51 @@ export async function generaReport(
     doc.setTextColor(0)
     y += hNota + 6
 
+    const larghVal = MARGINE + LARGHEZZA - LABEL_X
     for (let k = 0; k < prioritari.length; k++) {
       const a = prioritari[k]
-      controllaPagina(46)
       const meta = CPC_META[a.cpc] || CPC_META.A
+
+      // --- raccolgo prima campi e foto, così posso misurare la scheda e
+      //     tenerla tutta sulla stessa pagina (niente spezzature)
+      const bio = [
+        a.altezza_m != null ? `H ${a.altezza_m} m` : null,
+        a.dbh_cm != null ? `DBH ${a.dbh_cm} cm` : null,
+        a.diametro_chioma_m != null ? `chioma ${a.diametro_chioma_m} m` : null,
+        a.fase_sviluppo,
+      ].filter(Boolean).join(' · ')
+      const campi = [
+        ['Biometria', bio],
+        ['Difetti', sintesiStato(a)],
+        ['Prescrizione', `${a.prescrizioni_gestionali || '—'}${a.urgenza_intervento ? ` — ${a.urgenza_intervento}` : ''}`],
+      ]
+      if (a.mitigazione_bersaglio) campi.push(['Mitigazione', `${a.mitigazione_bersaglio}${a.urgenza_mitigazione ? ` — ${a.urgenza_mitigazione}` : ''}`])
+      if (a.richiesta_indagine_strumentale) campi.push(['Indagine', `${a.tipo_indagine_richiesta || ''}${a.urgenza_indagine ? ` — ${a.urgenza_indagine}` : ''}`])
+
+      let foto = null
+      const dett = fotoDettagli ? fotoDettagli(a) : []
+      if (dett[0]) {
+        const dataUrl = await urlToDataURL(dett[0].url)
+        if (dataUrl) {
+          const dim = await dimensioniImg(dataUrl)
+          let w = 80
+          let h = (w * dim.h) / dim.w
+          if (h > 56) { h = 56; w = (h * dim.w) / dim.h }
+          foto = { dataUrl, w, h }
+        }
+      }
+
+      // altezza stimata (coerente col rendering qui sotto)
+      let hScheda = 10 // titolo + luogo
+      if (a.intervento_emergenza) hScheda += 5
+      for (const [, v] of campi) {
+        if (!v) continue
+        hScheda += doc.splitTextToSize(String(v), larghVal).length * 4.4 + 1.2
+      }
+      if (a.lat != null) hScheda += 5.5
+      if (foto) hScheda += foto.h + 2.5
+      hScheda += 5 // separatore
+      controllaPagina(hScheda)
 
       // riga titolo: chip CPC + codice/specie  ·  rischio a destra
       const [cr, cg, cb] = hex(meta.color)
@@ -293,25 +337,13 @@ export async function generaReport(
       y += 5
 
       if (a.intervento_emergenza) {
-        controllaPagina(6)
         doc.setFont('helvetica', 'bold').setFontSize(8.6).setTextColor(180, 35, 35)
         doc.text('Emergenza — messa in sicurezza o abbattimento immediato', MARGINE, y)
         doc.setTextColor(0)
         y += 5
       }
-      const bio = [
-        a.altezza_m != null ? `H ${a.altezza_m} m` : null,
-        a.dbh_cm != null ? `DBH ${a.dbh_cm} cm` : null,
-        a.diametro_chioma_m != null ? `chioma ${a.diametro_chioma_m} m` : null,
-        a.fase_sviluppo,
-      ].filter(Boolean).join(' · ')
-      campo('Biometria', bio)
-      campo('Difetti', sintesiStato(a))
-      campo('Prescrizione', `${a.prescrizioni_gestionali || '—'}${a.urgenza_intervento ? ` — ${a.urgenza_intervento}` : ''}`)
-      if (a.mitigazione_bersaglio) campo('Mitigazione', `${a.mitigazione_bersaglio}${a.urgenza_mitigazione ? ` — ${a.urgenza_mitigazione}` : ''}`)
-      if (a.richiesta_indagine_strumentale) campo('Indagine', `${a.tipo_indagine_richiesta || ''}${a.urgenza_indagine ? ` — ${a.urgenza_indagine}` : ''}`)
+      for (const [et, v] of campi) campo(et, v)
       if (a.lat != null) {
-        controllaPagina(6)
         doc.setFont('helvetica', 'bold').setFontSize(8.8).setTextColor(...INK)
         doc.text('Posizione', MARGINE, y)
         doc.setFont('helvetica', 'normal')
@@ -321,23 +353,12 @@ export async function generaReport(
         doc.setTextColor(0)
         y += 5.5
       }
-
-      const dett = fotoDettagli ? fotoDettagli(a) : []
-      if (dett[0]) {
-        const dataUrl = await urlToDataURL(dett[0].url)
-        if (dataUrl) {
-          const dim = await dimensioniImg(dataUrl)
-          let w = 95
-          let h = (w * dim.h) / dim.w
-          if (h > 70) { h = 70; w = (h * dim.w) / dim.h }
-          controllaPagina(h + 4)
-          try { doc.addImage(dataUrl, 'JPEG', MARGINE, y, w, h, undefined, 'SLOW') } catch { /* ignora */ }
-          y += h + 2
-        }
+      if (foto) {
+        try { doc.addImage(foto.dataUrl, 'JPEG', MARGINE, y, foto.w, foto.h, undefined, 'SLOW') } catch { /* ignora */ }
+        y += foto.h + 2.5
       }
       // separatore sottile tra schede (non dopo l'ultima)
       if (k < prioritari.length - 1) {
-        controllaPagina(6)
         doc.setDrawColor(...LINE).setLineWidth(0.2)
         doc.line(MARGINE, y, MARGINE + LARGHEZZA, y)
         y += 5
