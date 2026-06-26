@@ -38,6 +38,7 @@ const CONFORMI = {
 }
 
 const DA_VERIFICARE = {
+  'cupressus arizonica': 'conifera ornamentale alloctona (Nord America), non invasiva',
   'platanus': 'ibrido ornamentale alloctono (non invasivo)',
   'washingtonia': 'palma ornamentale alloctona',
   'phoenix': 'palma ornamentale alloctona',

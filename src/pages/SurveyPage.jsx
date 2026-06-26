@@ -119,6 +119,20 @@ export default function SurveyPage() {
 
   const set = (campo, valore) => setR((prev) => ({ ...prev, [campo]: valore }))
 
+  // Cambio della specie: la conformità CAM torna a seguire la specie (anche su
+  // un rilievo già salvato), salvo poi ri-modificarla a mano. Es. correggendo
+  // "Cupressus sempervirens" → "Cupressus arizonica" il CAM passa da Conforme a
+  // Da verificare automaticamente.
+  const cambiaSpecie = (valore) => {
+    const sug = valutaConformitaCAM(valore)
+    camManualeRef.current = false
+    setR((prev) => ({
+      ...prev,
+      specie_botanica: valore,
+      conformita_cam: sug ? sug.esito : prev.conformita_cam,
+    }))
+  }
+
   // modifica di un rilievo esistente: i valori "Altro – testo" tornano
   // nella casella di testo libero
   useEffect(() => {
@@ -873,7 +887,7 @@ export default function SurveyPage() {
           <div className="card space-y-3">
             <div>
               <label className="mb-1 block text-sm font-medium">Specie botanica * (auto-completamento)</label>
-              <input className="field" list="specie" value={r.specie_botanica} onChange={(e) => set('specie_botanica', e.target.value)} placeholder="es. Pinus pinea" />
+              <input className="field" list="specie" value={r.specie_botanica} onChange={(e) => cambiaSpecie(e.target.value)} placeholder="es. Pinus pinea" />
               <datalist id="specie">
                 {SPECIE.map((s) => (
                   <option key={s}>{s}</option>
