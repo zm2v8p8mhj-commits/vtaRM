@@ -2,7 +2,6 @@ import { jsPDF } from 'jspdf'
 import { CPC_META, CLASSE_RISCHIO_META } from './constants'
 import { sintesiStato } from './cpc'
 import { urlToDataURL, dimensioniImg } from './pdf'
-import { mappaZonaDataURL } from './mappaStatica'
 
 // ----------------------------------------------------------------------------
 // Report di periodo per il committente. Linea grafica sobria e tecnica:
@@ -176,36 +175,6 @@ export async function generaReport(
   doc.text('A Trascurabile · B Bassa · C Moderata · C/D Elevata · D Estrema', MARGINE, y)
   doc.setTextColor(0)
   y += 4
-
-  // ---- inquadramento dell'area (mappa satellitare con poligono ed etichette)
-  if (zonaPunti && zonaPunti.length >= 3) {
-    const mappa = await mappaZonaDataURL(zonaPunti, alberi)
-    if (mappa && mappa.url) {
-      // l'immagine è ritagliata sull'area: si rispetta il suo rapporto, con
-      // un'altezza contenuta per non far "dominare" la mappa (max ~105 mm)
-      let w = LARGHEZZA
-      let h = (w * mappa.h) / mappa.w
-      const hMax = 105
-      if (h > hMax) {
-        w = (hMax * mappa.w) / mappa.h
-        h = hMax
-      }
-      const x = MARGINE + (LARGHEZZA - w) / 2
-      // header + mappa + didascalia tenuti insieme sulla stessa pagina
-      controllaPagina(h + 20)
-      sezione('Inquadramento dell\'area', 0)
-      try {
-        doc.addImage(mappa.url, 'JPEG', x, y, w, h)
-      } catch {
-        /* ignora */
-      }
-      y += h + 2.5
-      doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(...MUTE)
-      doc.text('Ortofoto satellitare; perimetro dell\'area in giallo, esemplari con il numero di scheda e colore secondo la classe CPC.', MARGINE, y)
-      doc.setTextColor(0)
-      y += 4
-    }
-  }
 
   // ---- legenda classi CPC, in linguaggio comprensibile a chiunque
   if (verbale) {
