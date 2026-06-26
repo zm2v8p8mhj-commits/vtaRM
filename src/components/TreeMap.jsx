@@ -66,6 +66,10 @@ export default function TreeMap({
     L.control.layers({ 'Mappa stradale': osm, Satellite: satellite }, null, {
       position: 'topright',
     }).addTo(map)
+    // pane dedicato alle zone, SOTTO i marker: così il click su un albero va
+    // sempre all'albero e non seleziona la zona sottostante
+    map.createPane('zonePane')
+    map.getPane('zonePane').style.zIndex = 350
     zoneRef.current = L.layerGroup().addTo(map)
     markersRef.current = L.layerGroup().addTo(map)
     disegnoRef.current = L.layerGroup().addTo(map)
@@ -132,6 +136,7 @@ export default function TreeMap({
     for (const z of zone) {
       if (!z.punti?.length) continue
       const poly = L.polygon(z.punti, {
+        pane: 'zonePane',
         color: '#0369a1',
         weight: 2,
         dashArray: '4,4',
