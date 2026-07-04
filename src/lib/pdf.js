@@ -132,8 +132,9 @@ export function dimensioniImg(dataUrl) {
   })
 }
 
-export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+// disegna UNA scheda sul doc fornito (la pagina corrente); riusata sia per la
+// scheda singola sia per il PDF con tutte le schede di una zona
+async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   let y = 16
 
   const intestazione = () => {
@@ -329,7 +330,10 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
     }
   }
 
-  // Piè di pagina su ogni pagina
+}
+
+// piè di pagina numerato su tutte le pagine del documento
+function piePagina(doc) {
   const pagine = doc.getNumberOfPages()
   for (let i = 1; i <= pagine; i++) {
     doc.setPage(i)
@@ -340,6 +344,25 @@ export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
     )
     doc.setTextColor(0)
   }
+}
 
+export async function generaSchedaPDF(albero, fotoUrls = [], comuneNome = '') {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await renderScheda(doc, albero, fotoUrls, comuneNome)
+  piePagina(doc)
   doc.save(`Scheda_VTA_${albero.codice || albero.id}.pdf`)
+}
+
+// PDF unico con TUTTE le schede degli alberi passati (una per pagina).
+// fotoPerAlbero(a) restituisce le foto/dettagli del singolo albero.
+// onProgress(fatte, totale) opzionale per l'indicatore di avanzamento.
+export async function generaSchedePDF(alberi, fotoPerAlbero, comuneNome = '', nomeFile = 'Schede_VTA.pdf', onProgress) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  for (let i = 0; i < alberi.length; i++) {
+    if (i > 0) doc.addPage()
+    await renderScheda(doc, alberi[i], fotoPerAlbero ? fotoPerAlbero(alberi[i]) : [], comuneNome)
+    onProgress?.(i + 1, alberi.length)
+  }
+  piePagina(doc)
+  doc.save(nomeFile)
 }

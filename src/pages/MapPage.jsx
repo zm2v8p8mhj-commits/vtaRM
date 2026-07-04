@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext'
 import { CPC_CLASSI, CPC_META } from '../lib/constants'
 import { downloadGeoJSON } from '../lib/geojson'
 import { generaReport } from '../lib/report'
+import { generaSchedePDF } from '../lib/pdf'
 import TreeMap from '../components/TreeMap'
 import CpcBadge from '../components/CpcBadge'
 
@@ -23,6 +24,7 @@ export default function MapPage() {
   const [nomeZona, setNomeZona] = useState('')
   const [descrZona, setDescrZona] = useState('')
   const [genInCorso, setGenInCorso] = useState(false)
+  const [schede, setSchede] = useState({ inCorso: false, fatte: 0, totale: 0 })
 
   useEffect(() => {
     if (!areaSel) return
@@ -91,6 +93,25 @@ export default function MapPage() {
       })
     } finally {
       setGenInCorso(false)
+    }
+  }
+
+  // scarica in un unico PDF tutte le schede degli alberi della zona
+  const scaricaSchedeZona = async () => {
+    if (!areaSel?.dentro?.length) return
+    const nome = (nomeZona.trim() || committenteArea(areaSel.dentro) || 'zona')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+    setSchede({ inCorso: true, fatte: 0, totale: areaSel.dentro.length })
+    try {
+      await generaSchedePDF(
+        areaSel.dentro,
+        fotoDettagli,
+        committenteArea(areaSel.dentro),
+        `Schede_VTA_${nome}.pdf`,
+        (fatte, totale) => setSchede({ inCorso: true, fatte, totale })
+      )
+    } finally {
+      setSchede({ inCorso: false, fatte: 0, totale: 0 })
     }
   }
 
@@ -377,6 +398,15 @@ export default function MapPage() {
                 💾 {areaSel.zona ? 'Aggiorna zona' : 'Salva zona'}
               </button>
             </div>
+            <button
+              className="btn-secondary mt-2 w-full"
+              disabled={schede.inCorso || areaSel.dentro.length === 0}
+              onClick={scaricaSchedeZona}
+            >
+              {schede.inCorso
+                ? `Preparazione schede… ${schede.fatte}/${schede.totale}`
+                : `🗂️ Scarica tutte le schede (${areaSel.dentro.length})`}
+            </button>
             {areaSel.zona && (
               <button
                 className="mt-3 w-full text-xs font-semibold text-red-700 underline"
