@@ -15,7 +15,7 @@ const CAMPI_PROPRIETA = [
   'richiesta_indagine_strumentale', 'tipo_indagine_richiesta', 'urgenza_indagine',
   'data_prossimo_controllo', 'prescrizioni_gestionali', 'urgenza_intervento',
   'mitigazione_bersaglio', 'urgenza_mitigazione',
-  'co2_stoccata_kg', 'canopy_cover_m2', 'valore_economico_eur',
+  'co2_stoccata_kg', 'co2_kg_anno', 'canopy_cover_m2', 'valore_economico_eur',
   'data_ultimo_intervento', 'note_gestione',
   'url_foto', 'foto_difetti',
 ]

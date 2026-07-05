@@ -71,6 +71,7 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'Mitigazione bersaglio': a.mitigazione_bersaglio || '',
     'Urgenza mitigazione': a.urgenza_mitigazione || '',
     'CO2 stoccata (kg)': a.co2_stoccata_kg ?? '',
+    'CO2 assorbita (kg/anno)': a.co2_kg_anno ?? '',
     'Canopy cover effettivo (m²)': a.canopy_cover_m2 ?? '',
     'Valore economico (€)': a.valore_economico_eur ?? '',
     'Data ultimo intervento': dataIT(a.data_ultimo_intervento),

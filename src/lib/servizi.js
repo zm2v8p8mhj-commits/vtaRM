@@ -57,3 +57,22 @@ export function stimaCO2(specie, dbhCm, altezzaM) {
   const co2 = carbonio * 3.667
   return Math.round(co2)
 }
+
+// Incremento diametrico annuo indicativo (cm/anno) per fase di sviluppo:
+// gli alberi giovani crescono di più, i senescenti quasi nulla.
+const INCREMENTO_DBH = { Giovane: 0.8, Adulto: 0.5, Maturo: 0.3, Senescente: 0.1 }
+
+// CO2 ASSORBITA all'anno in kg (servizio "attivo"): differenza di CO2 stoccata
+// tra il DBH attuale e quello dell'anno successivo, dove la crescita annua è
+// data dalla fase di sviluppo e ridotta dalla vigoria (un albero deperiente non
+// cresce → 0). A differenza dello stock, questo dato dipende dalla vitalità.
+export function stimaCO2Annua(specie, dbhCm, altezzaM, faseSviluppo, vigoria) {
+  const co2Ora = stimaCO2(specie, dbhCm, altezzaM)
+  if (co2Ora == null) return null
+  const fattore = vigoria in FATTORE_VIGORIA ? FATTORE_VIGORIA[vigoria] : 1
+  const incr = (INCREMENTO_DBH[faseSviluppo] ?? 0.4) * fattore
+  if (incr <= 0) return 0
+  const co2Dopo = stimaCO2(specie, Number(dbhCm) + incr, altezzaM)
+  if (co2Dopo == null) return null
+  return Math.max(0, Math.round(co2Dopo - co2Ora))
+}

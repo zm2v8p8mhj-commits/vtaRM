@@ -7,6 +7,7 @@ import SurveyPage from './pages/SurveyPage'
 import ArchivePage from './pages/ArchivePage'
 import AdminPage from './pages/AdminPage'
 import PublicMapPage from './pages/PublicMapPage'
+import AggiornaApp from './components/AggiornaApp'
 
 function Protetta({ children }) {
   const { utente, autenticando } = useApp()
@@ -24,6 +25,7 @@ function Protetta({ children }) {
 export default function App() {
   return (
     <AppProvider>
+      <AggiornaApp />
       <HashRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

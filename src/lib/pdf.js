@@ -272,9 +272,10 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     ? `${albero.prescrizioni_gestionali}${albero.urgenza_intervento ? ` (${albero.urgenza_intervento})` : ''}` : '—')
   if (albero.mitigazione_bersaglio) riga('Mitigazione bersaglio',
     `${albero.mitigazione_bersaglio}${albero.urgenza_mitigazione ? ` (${albero.urgenza_mitigazione})` : ''}`)
-  if (albero.co2_stoccata_kg != null || albero.canopy_cover_m2 != null || albero.valore_economico_eur != null) {
+  if (albero.co2_stoccata_kg != null || albero.canopy_cover_m2 != null || albero.co2_kg_anno != null || albero.valore_economico_eur != null) {
     riga('Servizi ecosistemici', [
       albero.co2_stoccata_kg != null ? `CO₂ stoccata ${albero.co2_stoccata_kg} kg` : null,
+      albero.co2_kg_anno != null ? `CO₂ assorbita ${albero.co2_kg_anno} kg/anno` : null,
       albero.canopy_cover_m2 != null ? `canopy effettivo ${albero.canopy_cover_m2} m²` : null,
       albero.valore_economico_eur != null ? `valore € ${albero.valore_economico_eur}` : null,
     ].filter(Boolean).join(' · '))

@@ -10,7 +10,7 @@ import {
 } from '../lib/constants'
 import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio } from '../lib/cpc'
 import { valutaConformitaCAM } from '../lib/cam'
-import { canopyCover, stimaCO2 } from '../lib/servizi'
+import { canopyCover, stimaCO2, stimaCO2Annua } from '../lib/servizi'
 import { getFotoByAlbero } from '../lib/db'
 import CpcBadge from '../components/CpcBadge'
 
@@ -473,6 +473,7 @@ export default function SurveyPage() {
       // canopy effettivo: sempre ricalcolato (dipende da chioma + vigoria), così
       // ri-salvando un rilievo esistente si aggiorna alla vigoria corrente
       canopy_cover_m2: canopyStimato,
+      co2_kg_anno: co2AnnuaStimata,
       // su mobile la parte gestionale resta da confermare in studio
       note_gestione: r.note_gestione || (!isDesktop ? 'Da confermare in studio' : ''),
       comune_nome: comuni.find((c) => c.id === r.comune_id)?.nome,
@@ -497,6 +498,10 @@ export default function SurveyPage() {
   // servizi ecosistemici calcolati dai dati biometrici
   const co2Stimata = useMemo(() => stimaCO2(r.specie_botanica, r.dbh_cm, r.altezza_m), [r.specie_botanica, r.dbh_cm, r.altezza_m])
   const canopyStimato = useMemo(() => canopyCover(r.diametro_chioma_m, r.vigoria), [r.diametro_chioma_m, r.vigoria])
+  const co2AnnuaStimata = useMemo(
+    () => stimaCO2Annua(r.specie_botanica, r.dbh_cm, r.altezza_m, r.fase_sviluppo, r.vigoria),
+    [r.specie_botanica, r.dbh_cm, r.altezza_m, r.fase_sviluppo, r.vigoria]
+  )
 
   // ------------------------------------------------------- sezione difetti
   const SezioneDifetti = ({ campo, titolo, opzioni }) => {
@@ -1209,6 +1214,13 @@ export default function SurveyPage() {
                   </div>
                   <div className="text-[10px] text-slate-500">chioma corretta per vigoria</div>
                 </div>
+                <div className="rounded-lg bg-green-50 px-3 py-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700">CO₂ assorbita / anno</div>
+                  <div className="text-lg font-bold text-green-900">
+                    {co2AnnuaStimata != null ? `${co2AnnuaStimata.toLocaleString('it-IT')} kg/anno` : '—'}
+                  </div>
+                  <div className="text-[10px] text-slate-500">crescita annua · corretta per vigoria</div>
+                </div>
               </div>
               <p className="text-xs text-slate-400">
                 Stime calcolate automaticamente dai dati biometrici (speditive, per il monitoraggio
@@ -1290,6 +1302,7 @@ export default function SurveyPage() {
               {r.mitigazione_bersaglio && <Riga k="Mitigazione bersaglio" v={`${r.mitigazione_bersaglio}${r.urgenza_mitigazione ? ` (${r.urgenza_mitigazione})` : ''}`} />}
               <Riga k="CO₂ stoccata (stima)" v={co2Stimata != null ? `${co2Stimata.toLocaleString('it-IT')} kg` : '—'} />
               <Riga k="Canopy cover effettivo" v={canopyStimato != null ? `${canopyStimato.toLocaleString('it-IT')} m²` : '—'} />
+              <Riga k="CO₂ assorbita / anno" v={co2AnnuaStimata != null ? `${co2AnnuaStimata.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="Foto" v={`${(r.url_foto?.length || 0) + nuoveFoto.length} allegate`} />
             </div>
 

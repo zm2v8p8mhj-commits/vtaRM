@@ -8,8 +8,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: false, // registrazione gestita a mano in main.jsx (auto-reload)
+      registerType: 'prompt', // mostra un avviso "Nuova versione"; l'utente aggiorna quando vuole
+      injectRegister: false, // registrazione gestita dal componente AggiornaApp
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'GreenCure VTA – Gestione del Verde',
@@ -29,7 +29,8 @@ export default defineConfig({
         ]
       },
       workbox: {
-        skipWaiting: true,
+        // niente skipWaiting automatico: la nuova versione attende la conferma
+        // dell'utente (pulsante "Aggiorna"), poi updateServiceWorker(true) la applica
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
