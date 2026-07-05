@@ -275,7 +275,7 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   if (albero.co2_stoccata_kg != null || albero.canopy_cover_m2 != null || albero.valore_economico_eur != null) {
     riga('Servizi ecosistemici', [
       albero.co2_stoccata_kg != null ? `CO₂ stoccata ${albero.co2_stoccata_kg} kg` : null,
-      albero.canopy_cover_m2 != null ? `canopy ${albero.canopy_cover_m2} m²` : null,
+      albero.canopy_cover_m2 != null ? `canopy effettivo ${albero.canopy_cover_m2} m²` : null,
       albero.valore_economico_eur != null ? `valore € ${albero.valore_economico_eur}` : null,
     ].filter(Boolean).join(' · '))
   }

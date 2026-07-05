@@ -470,7 +470,9 @@ export default function SurveyPage() {
       valore_economico_eur: num(r.valore_economico_eur),
       // servizi ecosistemici: usa il valore inserito a mano (PC) o la stima automatica
       co2_stoccata_kg: num(r.co2_stoccata_kg) ?? co2Stimata,
-      canopy_cover_m2: num(r.canopy_cover_m2) ?? canopyStimato,
+      // canopy effettivo: sempre ricalcolato (dipende da chioma + vigoria), così
+      // ri-salvando un rilievo esistente si aggiorna alla vigoria corrente
+      canopy_cover_m2: canopyStimato,
       // su mobile la parte gestionale resta da confermare in studio
       note_gestione: r.note_gestione || (!isDesktop ? 'Da confermare in studio' : ''),
       comune_nome: comuni.find((c) => c.id === r.comune_id)?.nome,
@@ -494,7 +496,7 @@ export default function SurveyPage() {
 
   // servizi ecosistemici calcolati dai dati biometrici
   const co2Stimata = useMemo(() => stimaCO2(r.specie_botanica, r.dbh_cm, r.altezza_m), [r.specie_botanica, r.dbh_cm, r.altezza_m])
-  const canopyStimato = useMemo(() => canopyCover(r.diametro_chioma_m), [r.diametro_chioma_m])
+  const canopyStimato = useMemo(() => canopyCover(r.diametro_chioma_m, r.vigoria), [r.diametro_chioma_m, r.vigoria])
 
   // ------------------------------------------------------- sezione difetti
   const SezioneDifetti = ({ campo, titolo, opzioni }) => {
@@ -1201,11 +1203,11 @@ export default function SurveyPage() {
                   <div className="text-[10px] text-slate-500">da specie + DBH + altezza</div>
                 </div>
                 <div className="rounded-lg bg-green-50 px-3 py-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700">Canopy cover</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700">Canopy cover effettivo</div>
                   <div className="text-lg font-bold text-green-900">
                     {canopyStimato != null ? `${canopyStimato.toLocaleString('it-IT')} m²` : '—'}
                   </div>
-                  <div className="text-[10px] text-slate-500">proiezione della chioma</div>
+                  <div className="text-[10px] text-slate-500">chioma corretta per vigoria</div>
                 </div>
               </div>
               <p className="text-xs text-slate-400">
@@ -1287,7 +1289,7 @@ export default function SurveyPage() {
               <Riga k="Interventi colturali" v={r.prescrizioni_gestionali ? `${r.prescrizioni_gestionali}${r.urgenza_intervento ? ` (${r.urgenza_intervento})` : ''}` : '—'} />
               {r.mitigazione_bersaglio && <Riga k="Mitigazione bersaglio" v={`${r.mitigazione_bersaglio}${r.urgenza_mitigazione ? ` (${r.urgenza_mitigazione})` : ''}`} />}
               <Riga k="CO₂ stoccata (stima)" v={co2Stimata != null ? `${co2Stimata.toLocaleString('it-IT')} kg` : '—'} />
-              <Riga k="Canopy cover" v={canopyStimato != null ? `${canopyStimato.toLocaleString('it-IT')} m²` : '—'} />
+              <Riga k="Canopy cover effettivo" v={canopyStimato != null ? `${canopyStimato.toLocaleString('it-IT')} m²` : '—'} />
               <Riga k="Foto" v={`${(r.url_foto?.length || 0) + nuoveFoto.length} allegate`} />
             </div>
 

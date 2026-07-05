@@ -31,11 +31,18 @@ function densita(specie) {
   return 0.6
 }
 
-// Canopy cover in m² (1 decimale)
-export function canopyCover(diametroChiomaM) {
+// Fattore di vigoria applicato al canopy "effettivo": misura la chioma viva che
+// realmente ombreggia e fornisce servizi. La CO2 stoccata NON usa questo fattore
+// (il carbonio resta immagazzinato nel legno anche in un albero deperiente).
+const FATTORE_VIGORIA = { Buona: 1, Media: 0.6, Scarsa: 0.3, Deperimento: 0 }
+
+// Canopy cover EFFETTIVO in m² (1 decimale): proiezione geometrica della chioma
+// corretta per la vigoria. Senza vigoria indicata si assume piena (nessuna riduzione).
+export function canopyCover(diametroChiomaM, vigoria) {
   const d = Number(diametroChiomaM)
   if (!Number.isFinite(d) || d <= 0) return null
-  return Math.round(Math.PI * (d / 2) ** 2 * 10) / 10
+  const fattore = vigoria in FATTORE_VIGORIA ? FATTORE_VIGORIA[vigoria] : 1
+  return Math.round(Math.PI * (d / 2) ** 2 * fattore * 10) / 10
 }
 
 // CO2 stoccata in kg (arrotondata); richiede DBH e altezza
