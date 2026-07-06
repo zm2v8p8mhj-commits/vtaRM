@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { CPC_META } from './constants'
-import { sintesiStato, gravitaLabel, normalizzaDifetti, accettabilitaRischio, rischioResiduo } from './cpc'
+import { sintesiStato, gravitaLabel, normalizzaDifetti, accettabilitaRischio, rischioResiduo, descriviConseguenza, nudgeConseguenza } from './cpc'
 import { stimaO2Annua, stimaPM10Annuo } from './servizi'
 
 // distretti mostrati nella scheda PDF (6 nuovi + "radici" dei record vecchi)
@@ -273,6 +273,9 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     if (residuo && residuo !== albero.classe_rischio) {
       riga('Rischio residuo atteso', `${residuo} (indicativo, a seguito degli interventi prescritti)`)
     }
+    riga('Conseguenza attesa', descriviConseguenza(albero))
+    const nudge = nudgeConseguenza(albero)
+    if (nudge) riga('Nota cautelativa', nudge)
   }
   riga('Indagine strumentale', albero.richiesta_indagine_strumentale
     ? `Sì – ${albero.tipo_indagine_richiesta || ''}${albero.urgenza_indagine ? ` (${albero.urgenza_indagine})` : ''}` : 'No')

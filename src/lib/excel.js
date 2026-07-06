@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx'
 import { CPC_META, DISTRETTI } from './constants'
-import { gravitaLabel, normalizzaDifetti, gravitaDistretto, rischioResiduo } from './cpc'
+import { gravitaLabel, normalizzaDifetti, gravitaDistretto, rischioResiduo, descriviConseguenza } from './cpc'
 import { stimaO2Annua, stimaPM10Annuo } from './servizi'
 
 // una coppia di colonne (difetti + gravità max) per ciascun distretto
@@ -63,6 +63,7 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'CPC descrizione': CPC_META[a.cpc]?.label || '',
     'Classe di rischio': a.classe_rischio || '',
     'Rischio residuo atteso': rischioResiduo(a) || '',
+    'Conseguenza attesa': descriviConseguenza(a),
     'Intervento emergenza': a.intervento_emergenza ? 'SÌ' : 'No',
     'Indagine strumentale': a.richiesta_indagine_strumentale ? 'Sì' : 'No',
     'Tipo indagine': a.richiesta_indagine_strumentale ? a.tipo_indagine_richiesta || '' : '',

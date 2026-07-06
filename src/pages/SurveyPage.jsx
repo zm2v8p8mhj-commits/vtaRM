@@ -8,7 +8,7 @@ import {
   PRESCRIZIONI_SUGGERITE, RILEVATORE_DEFAULT, SPECIE, TIPI_INDAGINE, GRAVITA,
   URGENZE, VIGORIA,
 } from '../lib/constants'
-import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio, accettabilitaRischio, rischioResiduo } from '../lib/cpc'
+import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio, accettabilitaRischio, rischioResiduo, descriviConseguenza, nudgeConseguenza } from '../lib/cpc'
 import { valutaConformitaCAM } from '../lib/cam'
 import { canopyCover, stimaCO2, stimaCO2Annua, stimaO2Annua, stimaPM10Annuo } from '../lib/servizi'
 import { getFotoByAlbero } from '../lib/db'
@@ -1318,6 +1318,8 @@ export default function SurveyPage() {
               {rischioResiduo(r) && rischioResiduo(r) !== r.classe_rischio && (
                 <Riga k="Rischio residuo atteso" v={`${rischioResiduo(r)} (indicativo, a interventi eseguiti)`} />
               )}
+              <Riga k="Conseguenza attesa" v={descriviConseguenza(r)} />
+              {nudgeConseguenza(r) && <Riga k="Nota cautelativa" v={nudgeConseguenza(r)} />}
               <Riga k="Indagine strumentale" v={r.richiesta_indagine_strumentale ? `Sì – ${r.tipo_indagine_richiesta}${r.urgenza_indagine ? ` (${r.urgenza_indagine})` : ''}` : 'No'} />
               <Riga k="Prossimo controllo" v={r.data_prossimo_controllo ? new Date(r.data_prossimo_controllo).toLocaleDateString('it-IT') : '—'} />
               <Riga k="Interventi colturali" v={r.prescrizioni_gestionali ? `${r.prescrizioni_gestionali}${r.urgenza_intervento ? ` (${r.urgenza_intervento})` : ''}` : '—'} />

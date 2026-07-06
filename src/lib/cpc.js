@@ -124,6 +124,71 @@ export function accettabilitaRischio(classe) {
 //  - emergenza / abbattimento / rimozione → Basso (bersaglio rimosso)
 //  - con intervento colturale o mitigazione del bersaglio → scende di un livello
 //  - senza interventi previsti → invariato
+// ---------------------------------------------------------------------------
+// Conseguenza (asse standard del rischio arboreo): quanto sarebbe GRAVE il danno
+// se la parte cedesse. C = peso della parte × vulnerabilità del bersaglio (0–1).
+// Tutto derivato dai dati già raccolti: la parte critica dal distretto col
+// difetto peggiore, il bersaglio dall'elenco Bersagli. È un indice di gravità,
+// NON una probabilità.
+// ---------------------------------------------------------------------------
+const PESO_PARTE = {
+  chioma: 0.2, // rami e parti apicali
+  branche: 0.5, ramificazione: 0.5, // branca grossa / cima
+  castello: 1.0, fusto: 1.0, colletto: 1.0, zolla: 1.0, radici: 1.0, // fusto / ribaltamento
+}
+const ETICHETTA_PARTE = {
+  chioma: 'chioma/rami', branche: 'branca', ramificazione: 'branca', castello: 'castello',
+  fusto: 'fusto', colletto: 'colletto', zolla: 'zolla (ribaltamento)', radici: 'apparato radicale',
+}
+
+// distretto con la gravità più alta (la parte da cui verosimilmente cede)
+export function distrettoCritico(record) {
+  let best = null
+  let max = -1
+  for (const k of DISTRETTI_KEYS) {
+    const g = gravitaDistretto(record[k])
+    if (g > max) { max = g; best = k }
+  }
+  return max > 0 ? best : null
+}
+
+export function fattoreConseguenza(record) {
+  const parte = distrettoCritico(record)
+  const pesoParte = parte ? (PESO_PARTE[parte] ?? 0.5) : 0.5
+  const bersagli = Array.isArray(record.bersagli) ? record.bersagli : []
+  const persone = bersagli.some((b) => /pedonale|veicolare|parcheggi|gioco|edific/i.test(b))
+  const veicoli = bersagli.some((b) => /veicolare/i.test(b))
+  const vulnerabilita = persone ? 1 : 0.3
+  let c = pesoParte * vulnerabilita
+  if (veicoli) c = Math.min(1, c * 1.2) // maggiorazione per veicoli in transito
+  c = Math.round(c * 100) / 100
+  const livello = c >= 0.7 ? 'Alta' : c >= 0.3 ? 'Media' : 'Bassa'
+  return {
+    c,
+    livello,
+    parte: parte ? ETICHETTA_PARTE[parte] || parte : null,
+    bersaglio: persone ? (veicoli ? 'persone e veicoli' : 'persone') : 'solo cose/beni',
+  }
+}
+
+// descrizione discorsiva pronta per scheda/verbale
+export function descriviConseguenza(record) {
+  const f = fattoreConseguenza(record)
+  const parti = [f.parte ? `parte critica: ${f.parte}` : null, `bersaglio: ${f.bersaglio}`].filter(Boolean)
+  return `${f.livello} (${parti.join('; ')}; indice C = ${f.c.toLocaleString('it-IT')})`
+}
+
+// suggerimento prudenziale: quando la conseguenza è Alta ma la classe di rischio
+// non è ancora la massima, invita a rivalutarla in via cautelativa (non modifica
+// nulla in automatico: la decisione resta al tecnico)
+export function nudgeConseguenza(record) {
+  const f = fattoreConseguenza(record)
+  if (f.livello === 'Alta' && record.classe_rischio && record.classe_rischio !== 'Estremo') {
+    return 'Bersaglio ad alta conseguenza: valutare l\'elevazione cautelativa della classe di rischio.'
+  }
+  return null
+}
+
 const SCALA_RISCHIO = ['Basso', 'Moderato', 'Elevato', 'Estremo']
 export function rischioResiduo(record) {
   const attuale = record.classe_rischio
