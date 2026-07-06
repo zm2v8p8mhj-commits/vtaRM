@@ -76,3 +76,21 @@ export function stimaCO2Annua(specie, dbhCm, altezzaM, faseSviluppo, vigoria) {
   if (co2Dopo == null) return null
   return Math.max(0, Math.round(co2Dopo - co2Ora))
 }
+
+// O2 prodotto all'anno (kg): stechiometria della fotosintesi, l'O2 liberato è
+// 32/44 della CO2 fissata nell'anno. Deriva quindi dalla CO2 assorbita annua.
+export function stimaO2Annua(specie, dbhCm, altezzaM, faseSviluppo, vigoria) {
+  const co2a = stimaCO2Annua(specie, dbhCm, altezzaM, faseSviluppo, vigoria)
+  if (co2a == null) return null
+  return Math.round(co2a * (32 / 44) * 10) / 10
+}
+
+// PM10 rimosso all'anno (g): proporzionale al canopy EFFETTIVO (chioma viva che
+// intercetta le polveri). Coefficiente speditivo ~1,5 g/m²·anno, ordine di
+// grandezza coerente con la letteratura i-Tree per il particolato in ambito urbano.
+const PM10_G_PER_M2_ANNO = 1.5
+export function stimaPM10Annuo(diametroChiomaM, vigoria) {
+  const cc = canopyCover(diametroChiomaM, vigoria)
+  if (cc == null) return null
+  return Math.round(cc * PM10_G_PER_M2_ANNO * 10) / 10
+}

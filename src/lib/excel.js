@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx'
 import { CPC_META, DISTRETTI } from './constants'
-import { gravitaLabel, normalizzaDifetti, gravitaDistretto } from './cpc'
+import { gravitaLabel, normalizzaDifetti, gravitaDistretto, rischioResiduo } from './cpc'
+import { stimaO2Annua, stimaPM10Annuo } from './servizi'
 
 // una coppia di colonne (difetti + gravità max) per ciascun distretto
 function difettiColonne(a) {
@@ -61,6 +62,7 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'CPC': a.cpc || '',
     'CPC descrizione': CPC_META[a.cpc]?.label || '',
     'Classe di rischio': a.classe_rischio || '',
+    'Rischio residuo atteso': rischioResiduo(a) || '',
     'Intervento emergenza': a.intervento_emergenza ? 'SÌ' : 'No',
     'Indagine strumentale': a.richiesta_indagine_strumentale ? 'Sì' : 'No',
     'Tipo indagine': a.richiesta_indagine_strumentale ? a.tipo_indagine_richiesta || '' : '',
@@ -72,6 +74,8 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'Urgenza mitigazione': a.urgenza_mitigazione || '',
     'CO2 stoccata (kg)': a.co2_stoccata_kg ?? '',
     'CO2 assorbita (kg/anno)': a.co2_kg_anno ?? '',
+    'O2 prodotto (kg/anno)': stimaO2Annua(a.specie_botanica, a.dbh_cm, a.altezza_m, a.fase_sviluppo, a.vigoria) ?? '',
+    'PM10 rimosso (g/anno)': stimaPM10Annuo(a.diametro_chioma_m, a.vigoria) ?? '',
     'Canopy cover effettivo (m²)': a.canopy_cover_m2 ?? '',
     'Valore economico (€)': a.valore_economico_eur ?? '',
     'Data ultimo intervento': dataIT(a.data_ultimo_intervento),

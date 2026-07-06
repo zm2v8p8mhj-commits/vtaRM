@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { CPC_META, CLASSE_RISCHIO_META } from './constants'
-import { sintesiStato } from './cpc'
+import { sintesiStato, accettabilitaRischio, rischioResiduo } from './cpc'
 import { urlToDataURL, dimensioniImg } from './pdf'
 
 // ----------------------------------------------------------------------------
@@ -260,6 +260,10 @@ export async function generaReport(
       ]
       if (a.mitigazione_bersaglio) campi.push(['Mitigazione', `${a.mitigazione_bersaglio}${a.urgenza_mitigazione ? ` — ${a.urgenza_mitigazione}` : ''}`])
       if (a.richiesta_indagine_strumentale) campi.push(['Indagine', `${a.tipo_indagine_richiesta || ''}${a.urgenza_indagine ? ` — ${a.urgenza_indagine}` : ''}`])
+      const residuo = rischioResiduo(a)
+      if (residuo && residuo !== a.classe_rischio) campi.push(['Rischio residuo', `${residuo} (atteso, a interventi eseguiti)`])
+      const acc = accettabilitaRischio(a.classe_rischio)
+      if (acc) campi.push(['Accettabilità', acc])
 
       let foto = null
       const dett = fotoDettagli ? fotoDettagli(a) : []

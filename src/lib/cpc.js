@@ -104,3 +104,33 @@ export function indiceBersaglio(frequenza) {
 export function suggerisciRischio(cpc, frequenza) {
   return MATRICE_RISCHIO[cpc]?.[indiceBersaglio(frequenza)] || 'Basso'
 }
+
+// ISO 31000 – accettabilità della classe di rischio (frase pronta per scheda e
+// verbale): rende esplicito che il rischio è la propensione (CPC) incrociata con
+// la conseguenza (bersaglio), con la relativa soglia di accettabilità.
+const ACCETTABILITA = {
+  Basso: 'Rischio accettabile: nessuna azione oltre il controllo ordinario.',
+  Moderato: 'Rischio tollerabile: monitoraggio periodico ed eventuali interventi colturali.',
+  Elevato: 'Rischio tollerabile solo se ridotto per quanto ragionevolmente praticabile (ALARP): interventi da programmare a breve.',
+  Estremo: 'Rischio inaccettabile: intervento di riduzione (messa in sicurezza o abbattimento) nei tempi indicati.',
+}
+export function accettabilitaRischio(classe) {
+  return ACCETTABILITA[classe] || null
+}
+
+// Rischio residuo ATTESO dopo gli interventi prescritti: valore indicativo (non
+// misurato). La buona pratica è prescrivere interventi che riconducano il rischio
+// a un livello accettabile.
+//  - emergenza / abbattimento / rimozione → Basso (bersaglio rimosso)
+//  - con intervento colturale o mitigazione del bersaglio → scende di un livello
+//  - senza interventi previsti → invariato
+const SCALA_RISCHIO = ['Basso', 'Moderato', 'Elevato', 'Estremo']
+export function rischioResiduo(record) {
+  const attuale = record.classe_rischio
+  const i = SCALA_RISCHIO.indexOf(attuale)
+  if (i < 0) return attuale || null
+  const prescr = `${record.prescrizioni_gestionali || ''}`.toLowerCase()
+  if (record.intervento_emergenza || /abbatt|rimoz|eliminaz/.test(prescr)) return 'Basso'
+  if (record.prescrizioni_gestionali || record.mitigazione_bersaglio) return SCALA_RISCHIO[Math.max(0, i - 1)]
+  return attuale
+}

@@ -8,9 +8,9 @@ import {
   PRESCRIZIONI_SUGGERITE, RILEVATORE_DEFAULT, SPECIE, TIPI_INDAGINE, GRAVITA,
   URGENZE, VIGORIA,
 } from '../lib/constants'
-import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio } from '../lib/cpc'
+import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio, accettabilitaRischio, rischioResiduo } from '../lib/cpc'
 import { valutaConformitaCAM } from '../lib/cam'
-import { canopyCover, stimaCO2, stimaCO2Annua } from '../lib/servizi'
+import { canopyCover, stimaCO2, stimaCO2Annua, stimaO2Annua, stimaPM10Annuo } from '../lib/servizi'
 import { getFotoByAlbero } from '../lib/db'
 import CpcBadge from '../components/CpcBadge'
 
@@ -502,6 +502,11 @@ export default function SurveyPage() {
     () => stimaCO2Annua(r.specie_botanica, r.dbh_cm, r.altezza_m, r.fase_sviluppo, r.vigoria),
     [r.specie_botanica, r.dbh_cm, r.altezza_m, r.fase_sviluppo, r.vigoria]
   )
+  const o2Stimato = useMemo(
+    () => stimaO2Annua(r.specie_botanica, r.dbh_cm, r.altezza_m, r.fase_sviluppo, r.vigoria),
+    [r.specie_botanica, r.dbh_cm, r.altezza_m, r.fase_sviluppo, r.vigoria]
+  )
+  const pm10Stimato = useMemo(() => stimaPM10Annuo(r.diametro_chioma_m, r.vigoria), [r.diametro_chioma_m, r.vigoria])
 
   // ------------------------------------------------------- sezione difetti
   const SezioneDifetti = ({ campo, titolo, opzioni }) => {
@@ -1221,6 +1226,20 @@ export default function SurveyPage() {
                   </div>
                   <div className="text-[10px] text-slate-500">crescita annua · corretta per vigoria</div>
                 </div>
+                <div className="rounded-lg bg-green-50 px-3 py-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700">O₂ prodotto / anno</div>
+                  <div className="text-lg font-bold text-green-900">
+                    {o2Stimato != null ? `${o2Stimato.toLocaleString('it-IT')} kg/anno` : '—'}
+                  </div>
+                  <div className="text-[10px] text-slate-500">da CO₂ assorbita (fotosintesi)</div>
+                </div>
+                <div className="rounded-lg bg-green-50 px-3 py-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700">PM10 rimosso / anno</div>
+                  <div className="text-lg font-bold text-green-900">
+                    {pm10Stimato != null ? `${pm10Stimato.toLocaleString('it-IT')} g/anno` : '—'}
+                  </div>
+                  <div className="text-[10px] text-slate-500">da canopy effettivo</div>
+                </div>
               </div>
               <p className="text-xs text-slate-400">
                 Stime calcolate automaticamente dai dati biometrici (speditive, per il monitoraggio
@@ -1295,7 +1314,10 @@ export default function SurveyPage() {
               {r.conformita_cam && <Riga k="Conformità CAM" v={r.conformita_cam} />}
               <Riga k="Vigoria" v={r.vigoria} />
               <Riga k="Stato" v={sintesiStato(r)} />
-              <Riga k="Classe di rischio" v={r.classe_rischio} />
+              <Riga k="Classe di rischio" v={r.classe_rischio ? `${r.classe_rischio}${accettabilitaRischio(r.classe_rischio) ? ` — ${accettabilitaRischio(r.classe_rischio)}` : ''}` : '—'} />
+              {rischioResiduo(r) && rischioResiduo(r) !== r.classe_rischio && (
+                <Riga k="Rischio residuo atteso" v={`${rischioResiduo(r)} (indicativo, a interventi eseguiti)`} />
+              )}
               <Riga k="Indagine strumentale" v={r.richiesta_indagine_strumentale ? `Sì – ${r.tipo_indagine_richiesta}${r.urgenza_indagine ? ` (${r.urgenza_indagine})` : ''}` : 'No'} />
               <Riga k="Prossimo controllo" v={r.data_prossimo_controllo ? new Date(r.data_prossimo_controllo).toLocaleDateString('it-IT') : '—'} />
               <Riga k="Interventi colturali" v={r.prescrizioni_gestionali ? `${r.prescrizioni_gestionali}${r.urgenza_intervento ? ` (${r.urgenza_intervento})` : ''}` : '—'} />
@@ -1303,6 +1325,8 @@ export default function SurveyPage() {
               <Riga k="CO₂ stoccata (stima)" v={co2Stimata != null ? `${co2Stimata.toLocaleString('it-IT')} kg` : '—'} />
               <Riga k="Canopy cover effettivo" v={canopyStimato != null ? `${canopyStimato.toLocaleString('it-IT')} m²` : '—'} />
               <Riga k="CO₂ assorbita / anno" v={co2AnnuaStimata != null ? `${co2AnnuaStimata.toLocaleString('it-IT')} kg/anno` : '—'} />
+              <Riga k="O₂ prodotto / anno" v={o2Stimato != null ? `${o2Stimato.toLocaleString('it-IT')} kg/anno` : '—'} />
+              <Riga k="PM10 rimosso / anno" v={pm10Stimato != null ? `${pm10Stimato.toLocaleString('it-IT')} g/anno` : '—'} />
               <Riga k="Foto" v={`${(r.url_foto?.length || 0) + nuoveFoto.length} allegate`} />
             </div>
 
