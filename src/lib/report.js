@@ -137,10 +137,12 @@ export async function generaReport(
       }, per complessivi ${alberi.length} esemplari valutati.`
   )
   paragrafo(
-    'Valutazione condotta con metodo VTA di Livello 1 (analisi visiva speditiva) secondo il protocollo ' +
-      'S.I.A.: la Classe di Propensione al Cedimento (CPC) deriva dai difetti rilevati nei distretti ' +
-      'anatomici con la regola del valore peggiore; la classe di rischio integra la propensione con il ' +
-      'bersaglio. Il documento ha carattere interlocutorio e segnala le priorità d\'intervento in attesa ' +
+    'Valutazione condotta con metodo VTA – Visual Tree Assessment (Mattheck & Breloer) di Livello 1 ' +
+      '(analisi visiva): la Classe di Propensione al Cedimento (CPC) deriva dai difetti rilevati nei ' +
+      'distretti anatomici con la regola del valore peggiore; la valutazione del rischio integra la ' +
+      'propensione con il bersaglio secondo i principi della norma ISO 31000. Per gli esemplari con ' +
+      'propensione elevata o quadro non dirimente si raccomanda l\'approfondimento strumentale di ' +
+      'Livello 2. Il documento ha carattere interlocutorio e segnala le priorità d\'intervento in attesa ' +
       'della relazione tecnica conclusiva.',
     MUTE,
     8.6
