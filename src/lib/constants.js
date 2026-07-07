@@ -56,6 +56,12 @@ export const FREQUENZE = [
   'Area costantemente occupata',
 ]
 
+// opzioni per il valore ornamentale (modello dello studio)
+export const POSIZIONE_SOCIALE = ['Dominata', 'Intermedia', 'Codominante', 'Isolata / predominante']
+export const CONTESTO_DIMORA = ['Buca / pavimentato', 'Aiuola', 'Giardino / parco', 'Parco storico / di pregio']
+export const CONTESTO_LOCALIZZAZIONE = ['Aree rurali', 'Periurbano', 'Urbano', 'Centro storico']
+export const VINCOLI = ['Nessuno', 'Paesaggistico', 'Monumentale']
+
 export const DIFETTI_RADICI = [
   'Radici affioranti danneggiate', 'Radici strozzanti', 'Carpofori al colletto',
   'Marciume del colletto', 'Taglio radici / scavi recenti',

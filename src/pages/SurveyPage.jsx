@@ -6,7 +6,7 @@ import {
   BERSAGLI, CPC_CLASSI, CPC_META, CLASSE_RISCHIO_META, CONFORMITA_CAM,
   CONFLITTI, DISTRETTI, FASI_SVILUPPO, FREQUENZE, LOCALIZZAZIONI,
   PRESCRIZIONI_SUGGERITE, RILEVATORE_DEFAULT, SPECIE, TIPI_INDAGINE, GRAVITA,
-  URGENZE, VIGORIA,
+  URGENZE, VIGORIA, POSIZIONE_SOCIALE, CONTESTO_DIMORA, CONTESTO_LOCALIZZAZIONE, VINCOLI,
 } from '../lib/constants'
 import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio, accettabilitaRischio, rischioResiduo, descriviConseguenza, nudgeConseguenza } from '../lib/cpc'
 import { valutaConformitaCAM } from '../lib/cam'
@@ -80,6 +80,12 @@ function recordVuoto() {
     // valori
     co2_kg_anno: '',
     valore_economico_eur: '',
+    // valore ornamentale — contesto (modello dello studio)
+    posizione_sociale: '',
+    contesto_dimora: '',
+    contesto_localizzazione: '',
+    vincolo: '',
+    valore_max_rif: '',
     // inclinazione (modulo pericolo)
     inclinazione_tipo: '',
     inclinazione_gradi: '',
@@ -506,6 +512,7 @@ export default function SurveyPage() {
       altezza_branca_m: num(r.altezza_branca_m),
       altezza_bersaglio_m: num(r.altezza_bersaglio_m),
       apc_m: num(r.apc_m),
+      valore_max_rif: num(r.valore_max_rif),
       inclinazione_gradi: num(r.inclinazione_gradi),
       // l'instabilità al suolo è un segno di cedimento imminente: attiva l'emergenza
       intervento_emergenza: r.intervento_emergenza || r.instabilita_suolo,
@@ -551,7 +558,8 @@ export default function SurveyPage() {
   const pm10Stimato = useMemo(() => stimaPM10Annuo(r.diametro_chioma_m, r.vigoria), [r.diametro_chioma_m, r.vigoria])
   const valoreStimato = useMemo(
     () => valoreOrnamentale(r),
-    [r.dbh_cm, r.circonferenza_cm, r.specie_botanica, r.vigoria]
+    [r.dbh_cm, r.circonferenza_cm, r.altezza_m, r.diametro_chioma_m, r.specie_botanica, r.vigoria,
+      r.posizione_sociale, r.contesto_dimora, r.contesto_localizzazione, r.vincolo, r.valore_max_rif]
   )
 
   // ------------------------------------------------------- sezione difetti
@@ -1366,7 +1374,7 @@ export default function SurveyPage() {
                       {valoreStimato && (
                         <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                           <span>
-                            Stima Norma Granada: <strong>€ {valoreStimato.valore.toLocaleString('it-IT')}</strong>
+                            Stima (modello studio): <strong>€ {valoreStimato.valore.toLocaleString('it-IT')}</strong>
                             {valoreStimato.deprezzoPct > 0 ? ` (deprezzo sanitario ${valoreStimato.deprezzoPct}%)` : ''}
                           </span>
                           <button type="button" className="rounded bg-green-700 px-2 py-0.5 font-semibold text-white"
@@ -1374,6 +1382,44 @@ export default function SurveyPage() {
                         </div>
                       )}
                     </div>
+                  </div>
+
+                  {/* Contesto per il valore ornamentale (modello dello studio) */}
+                  <p className="pt-1 text-xs font-semibold text-slate-500">Valore ornamentale — contesto</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Posizione sociale</label>
+                      <select className="field" value={r.posizione_sociale} onChange={(e) => set('posizione_sociale', e.target.value)}>
+                        <option value="">—</option>
+                        {POSIZIONE_SOCIALE.map((o) => (<option key={o}>{o}</option>))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Dimora</label>
+                      <select className="field" value={r.contesto_dimora} onChange={(e) => set('contesto_dimora', e.target.value)}>
+                        <option value="">—</option>
+                        {CONTESTO_DIMORA.map((o) => (<option key={o}>{o}</option>))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Localizzazione</label>
+                      <select className="field" value={r.contesto_localizzazione} onChange={(e) => set('contesto_localizzazione', e.target.value)}>
+                        <option value="">—</option>
+                        {CONTESTO_LOCALIZZAZIONE.map((o) => (<option key={o}>{o}</option>))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Vincolo</label>
+                      <select className="field" value={r.vincolo} onChange={(e) => set('vincolo', e.target.value)}>
+                        <option value="">—</option>
+                        {VINCOLI.map((o) => (<option key={o}>{o}</option>))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Valore massimo di riferimento (€) <span className="font-normal text-slate-400">— tetto locale, tarabile</span></label>
+                    <input type="number" step="1000" min="0" className="field" value={r.valore_max_rif}
+                      onChange={(e) => set('valore_max_rif', e.target.value)} placeholder="default 70.000" />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Note gestione / cronologia interventi</label>
@@ -1482,7 +1528,7 @@ export default function SurveyPage() {
               <Riga k="CO₂ assorbita / anno" v={co2AnnuaStimata != null ? `${co2AnnuaStimata.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="O₂ prodotto / anno" v={o2Stimato != null ? `${o2Stimato.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="PM10 rimosso / anno" v={pm10Stimato != null ? `${pm10Stimato.toLocaleString('it-IT')} g/anno` : '—'} />
-              <Riga k="Valore ornamentale" v={r.valore_economico_eur ? `€ ${Number(r.valore_economico_eur).toLocaleString('it-IT')}` : (valoreStimato ? `€ ${valoreStimato.valore.toLocaleString('it-IT')} (stima Norma Granada)` : '—')} />
+              <Riga k="Valore ornamentale" v={r.valore_economico_eur ? `€ ${Number(r.valore_economico_eur).toLocaleString('it-IT')}` : (valoreStimato ? `€ ${valoreStimato.valore.toLocaleString('it-IT')} (stima)` : '—')} />
               {r.inclinazione_tipo && (
                 <Riga k="Inclinazione" v={`${r.inclinazione_tipo}${r.inclinazione_gradi !== '' && r.inclinazione_gradi != null ? ` · ${r.inclinazione_gradi}°` : ''}${r.curvatura_correttiva ? ' · curvatura correttiva' : ''}`} />
               )}

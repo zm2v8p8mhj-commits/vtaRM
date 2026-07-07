@@ -96,43 +96,66 @@ export function stimaPM10Annuo(diametroChiomaM, vigoria) {
 }
 
 // ---------------------------------------------------------------------------
-// Valore ornamentale (metodo Norma Granada, versione speditiva e trasparente).
-// Valore = sezione del fusto (cm²) × prezzo unitario × coeff. specie × coeff. sanitario.
-//  - sezione del fusto: dal DBH (o dalla circonferenza), proxy della "quantità" di albero
-//  - coeff. specie: pregio/lentezza di crescita
-//  - coeff. sanitario: deprezzamento per condizioni fitosanitarie (vigoria)
-// I parametri (in particolare il prezzo unitario €/cm²) sono tarabili dal tecnico.
-// È una STIMA orientativa a supporto del rapporto costi/benefici, non una perizia.
+// Valore ornamentale — MODELLO DELLO STUDIO (indipendente, coefficienti nostri
+// e tarabili; fonti pubbliche: metodi Granada/Svizzero + dati ISTAT provinciali).
+// Passi:
+//   1) monumentalità (0–1): curva sigmoide su circonferenza, altezza, chioma;
+//      il dominante pesa di più, con contributo dell'insieme.
+//   2) qualità ornamentale: la monumentalità è arricchita dagli aspetti di
+//      contesto (dimora, posizione sociale, localizzazione, vincolo).
+//   3) valore = valmax (tetto locale, ancorabile al reddito provinciale) ×
+//      qualità × rango della specie (adattabilità fitoclimatica) × (1 − deprezzo).
+// I coefficienti qui sotto sono scelte dello studio, modificabili.
 // ---------------------------------------------------------------------------
-const PREZZO_SEZIONE_EUR_CM2 = 3 // €/cm² di sezione del fusto (parametro tarabile)
+const VALMAX_DEFAULT = 70000 // € tetto di riferimento (tarabile per provincia)
+const sigmoide = (x, x0, k) => 1 / (1 + Math.exp(-k * (x - x0)))
 
-const COEFF_SPECIE_VALORE = {
-  'quercus': 1.3, 'olea': 1.3, 'pinus pinea': 1.2, 'cupressus sempervirens': 1.15,
-  'tilia': 1.1, 'celtis': 1.1, 'cupressus': 1.05, 'platanus': 1.0, 'fraxinus': 1.0,
-  'cercis': 1.0, 'ulmus': 0.95, 'morus': 0.85, 'ligustrum': 0.8, 'populus': 0.7,
-  'eucalyptus': 0.7, 'acer negundo': 0.6, 'robinia': 0.6, 'ailanthus': 0.5, 'melia': 0.7,
-}
-function coeffSpecieValore(specie) {
-  if (!specie) return 1
+// pesi (frazione di valore aggiunta) degli aspetti funzionali — coefficienti dello studio
+const PESO_DIMORA = { 'Buca / pavimentato': 0.01, Aiuola: 0.04, 'Giardino / parco': 0.09, 'Parco storico / di pregio': 0.15 }
+const PESO_POSIZIONE = { Dominata: 0.02, Intermedia: 0.06, Codominante: 0.1, 'Isolata / predominante': 0.15 }
+const PESO_LOCALIZZAZIONE = { 'Aree rurali': 0.02, Periurbano: 0.06, Urbano: 0.1, 'Centro storico': 0.15 }
+const PESO_VINCOLO = { Nessuno: 0, Paesaggistico: 0.1, Monumentale: 0.22 }
+
+// rango della specie: adattabilità fitoclimatica al contesto mediterraneo (0.6–1)
+const RANGO_ALTO = ['quercus ilex', 'quercus pubescens', 'olea', 'pinus halepensis', 'pinus pinea', 'cupressus', 'celtis', 'fraxinus ornus', 'cercis', 'chamaerops']
+const RANGO_BASSO = ['populus', 'acer negundo', 'robinia', 'ailanthus', 'eucalyptus', 'ligustrum', 'washingtonia', 'phoenix', 'jacaranda', 'ficus', 'schinus', 'melia']
+function rangoSpecie(specie) {
+  if (!specie) return 0.8
   const s = specie.trim().toLowerCase()
-  for (const k of Object.keys(COEFF_SPECIE_VALORE)) {
-    if (s.includes(k)) return COEFF_SPECIE_VALORE[k]
-  }
-  return 1
+  if (RANGO_ALTO.some((k) => s.includes(k))) return 1
+  if (RANGO_BASSO.some((k) => s.includes(k))) return 0.65
+  return 0.85
 }
 
-// deprezzamento sanitario (frazione di valore persa) per condizioni fitosanitarie
-const DEPREZZO_SANITARIO = { Buona: 0, Media: 0.3, Scarsa: 0.6, Deperimento: 0.9 }
+// deprezzamento fitosanitario (frazione di valore persa) dalla vigoria
+const DEPREZZO_SANITARIO = { Buona: 0, Media: 0.3, Scarsa: 0.5, Deperimento: 0.9 }
 
 export function valoreOrnamentale(record) {
-  let D = Number(record.dbh_cm)
-  if (!Number.isFinite(D) || D <= 0) {
-    const circ = Number(record.circonferenza_cm)
-    if (Number.isFinite(circ) && circ > 0) D = circ / Math.PI
-  }
-  if (!Number.isFinite(D) || D <= 0) return null
-  const sezione = Math.PI * (D / 2) ** 2 // cm²
+  let circ = Number(record.circonferenza_cm)
+  const dbh = Number(record.dbh_cm)
+  if ((!Number.isFinite(circ) || circ <= 0) && Number.isFinite(dbh) && dbh > 0) circ = Math.PI * dbh
+  const H = Number(record.altezza_m)
+  const Dch = Number(record.diametro_chioma_m)
+
+  const V = []
+  if (Number.isFinite(circ) && circ > 0) V.push(sigmoide(circ, 180, 0.018))
+  if (Number.isFinite(H) && H > 0) V.push(sigmoide(H, 16, 0.28))
+  if (Number.isFinite(Dch) && Dch > 0) V.push(sigmoide(Dch, 10, 0.33))
+  if (!V.length) return null
+
+  const max = Math.max(...V)
+  const media = V.reduce((a, b) => a + b, 0) / V.length
+  const qMon = 0.6 * max + 0.4 * media // il dominante conta di più, ma pesa l'insieme
+
+  const funz =
+    (PESO_DIMORA[record.contesto_dimora] || 0) +
+    (PESO_POSIZIONE[record.posizione_sociale] || 0) +
+    (PESO_LOCALIZZAZIONE[record.contesto_localizzazione] || 0) +
+    (PESO_VINCOLO[record.vincolo] || 0)
+  const qOrn = qMon + (1 - qMon) * Math.min(1, funz)
+
+  const valmax = Number(record.valore_max_rif) > 0 ? Number(record.valore_max_rif) : VALMAX_DEFAULT
   const deprezzo = record.vigoria in DEPREZZO_SANITARIO ? DEPREZZO_SANITARIO[record.vigoria] : 0
-  const valore = sezione * PREZZO_SEZIONE_EUR_CM2 * coeffSpecieValore(record.specie_botanica) * (1 - deprezzo)
-  return { valore: Math.round(valore), deprezzoPct: Math.round(deprezzo * 100) }
+  const valore = valmax * qOrn * rangoSpecie(record.specie_botanica) * (1 - deprezzo)
+  return { valore: Math.round(valore), deprezzoPct: Math.round(deprezzo * 100), qOrn: Math.round(qOrn * 100) }
 }

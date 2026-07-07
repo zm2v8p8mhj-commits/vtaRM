@@ -17,6 +17,7 @@ const CAMPI_PROPRIETA = [
   'mitigazione_bersaglio', 'urgenza_mitigazione',
   'co2_stoccata_kg', 'co2_kg_anno', 'canopy_cover_m2', 'valore_economico_eur',
   'inclinazione_tipo', 'inclinazione_gradi', 'curvatura_correttiva', 'instabilita_suolo',
+  'posizione_sociale', 'contesto_dimora', 'contesto_localizzazione', 'vincolo', 'valore_max_rif',
   'compartimentazione', 'apc_m', 'suolo_zpa', 'limiti_valutazione', 'motivazione_scelte',
   'data_ultimo_intervento', 'note_gestione',
   'url_foto', 'foto_difetti',
