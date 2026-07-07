@@ -131,6 +131,18 @@ export default function SurveyPage() {
     }
     setInclinometroAperto(true)
   }
+
+  // toggle di un bersaglio; selezionando un "sito sensibile" imposta in automatico
+  // la frequentazione al massimo (recettori vulnerabili: scuole, asili, RSA…)
+  const toggleBersaglio = (b) => {
+    const presente = r.bersagli.includes(b)
+    const nuovi = presente ? r.bersagli.filter((x) => x !== b) : [...r.bersagli, b]
+    setR((prev) => {
+      const patch = { ...prev, bersagli: nuovi }
+      if (!presente && /sensibile|scuola|asilo|rsa/i.test(b)) patch.frequenza_occupazione = 'Area costantemente occupata'
+      return patch
+    })
+  }
   const [errori, setErrori] = useState([])
   const [salvato, setSalvato] = useState(false)
   const watchRef = useRef(null)
@@ -999,11 +1011,17 @@ export default function SurveyPage() {
                   <label key={b} className="flex cursor-pointer items-center gap-2 text-sm">
                     <input type="checkbox" className="h-4 w-4 accent-green-700"
                       checked={r.bersagli.includes(b)}
-                      onChange={() => set('bersagli', r.bersagli.includes(b) ? r.bersagli.filter((x) => x !== b) : [...r.bersagli, b])} />
+                      onChange={() => toggleBersaglio(b)} />
                     {b}
                   </label>
                 ))}
               </div>
+              {r.bersagli.some((b) => /sensibile|scuola|asilo|rsa/i.test(b)) && (
+                <p className="mt-2 rounded-lg bg-orange-100 px-3 py-2 text-xs text-orange-800">
+                  ⚠️ Sito sensibile: frequentazione impostata a «costantemente occupata» e conseguenza maggiorata
+                  (recettori vulnerabili) — il rischio sale anche con difetti moderati.
+                </p>
+              )}
               {r.bersagli.includes('Altro') && (
                 <input
                   className="field mt-3"

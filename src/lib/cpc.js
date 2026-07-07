@@ -173,11 +173,13 @@ export function fattoreConseguenza(record) {
   const parte = distrettoCritico(record)
   const pesoParte = parte ? (PESO_PARTE[parte] ?? 0.5) : 0.5
   const bersagli = Array.isArray(record.bersagli) ? record.bersagli : []
-  const persone = bersagli.some((b) => /pedonale|veicolare|parcheggi|gioco|edific/i.test(b))
+  const sensibile = bersagli.some((b) => /sensibile|scuola|asilo|rsa/i.test(b))
+  const persone = sensibile || bersagli.some((b) => /pedonale|veicolare|parcheggi|gioco|edific/i.test(b))
   const veicoli = bersagli.some((b) => /veicolare/i.test(b))
   const vulnerabilita = persone ? 1 : 0.3
   let c = pesoParte * vulnerabilita
-  if (veicoli) c = Math.min(1, c * 1.2) // maggiorazione per veicoli in transito
+  // maggiorazione per veicoli in transito o sito sensibile (recettori vulnerabili)
+  if (veicoli || sensibile) c = Math.min(1, c * 1.2)
   c = Math.round(c * 100) / 100
   const livello = c >= 0.7 ? 'Alta' : c >= 0.3 ? 'Media' : 'Bassa'
   return {

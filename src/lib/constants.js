@@ -46,7 +46,8 @@ export const FASI_SVILUPPO = ['Giovane', 'Adulto', 'Maturo', 'Senescente']
 
 export const BERSAGLI = [
   'Recinzioni', 'Edifici', 'Viabilità veicolare', 'Viabilità pedonale',
-  'Parcheggi', 'Impianti / sottoservizi', 'Aree gioco', 'Arredo urbano', 'Altro',
+  'Parcheggi', 'Impianti / sottoservizi', 'Aree gioco', 'Arredo urbano',
+  'Sito sensibile (scuola/asilo/RSA)', 'Altro',
 ]
 
 export const FREQUENZE = [
