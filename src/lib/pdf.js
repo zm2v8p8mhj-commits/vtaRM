@@ -294,7 +294,7 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
       o2 != null ? `O₂ prodotto ${o2} kg/anno` : null,
       pm10 != null ? `PM10 rimosso ${pm10} g/anno` : null,
       albero.canopy_cover_m2 != null ? `canopy effettivo ${albero.canopy_cover_m2} m²` : null,
-      albero.valore_economico_eur != null ? `valore € ${albero.valore_economico_eur}` : null,
+      albero.valore_economico_eur != null ? `valore ornamentale € ${albero.valore_economico_eur} (Norma Granada)` : null,
     ].filter(Boolean).join(' · '))
   }
   if (albero.inclinazione_tipo) {

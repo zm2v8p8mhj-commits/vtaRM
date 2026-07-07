@@ -10,7 +10,7 @@ import {
 } from '../lib/constants'
 import { dataProssimoControllo, generaCodice, sintesiStato, suggerisciCPC, suggerisciRischio, accettabilitaRischio, rischioResiduo, descriviConseguenza, nudgeConseguenza } from '../lib/cpc'
 import { valutaConformitaCAM } from '../lib/cam'
-import { canopyCover, stimaCO2, stimaCO2Annua, stimaO2Annua, stimaPM10Annuo } from '../lib/servizi'
+import { canopyCover, stimaCO2, stimaCO2Annua, stimaO2Annua, stimaPM10Annuo, valoreOrnamentale } from '../lib/servizi'
 import { getFotoByAlbero } from '../lib/db'
 import CpcBadge from '../components/CpcBadge'
 import Inclinometro from '../components/Inclinometro'
@@ -549,6 +549,10 @@ export default function SurveyPage() {
     [r.specie_botanica, r.dbh_cm, r.altezza_m, r.fase_sviluppo, r.vigoria]
   )
   const pm10Stimato = useMemo(() => stimaPM10Annuo(r.diametro_chioma_m, r.vigoria), [r.diametro_chioma_m, r.vigoria])
+  const valoreStimato = useMemo(
+    () => valoreOrnamentale(r),
+    [r.dbh_cm, r.circonferenza_cm, r.specie_botanica, r.vigoria]
+  )
 
   // ------------------------------------------------------- sezione difetti
   const SezioneDifetti = ({ campo, titolo, opzioni }) => {
@@ -1357,8 +1361,18 @@ export default function SurveyPage() {
                       <input type="date" className="field" value={r.data_ultimo_intervento} onChange={(e) => set('data_ultimo_intervento', e.target.value)} />
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Valore economico (€)</label>
+                      <label className="mb-1 block text-sm font-medium">Valore ornamentale (€)</label>
                       <input type="number" step="1" min="0" className="field" value={r.valore_economico_eur} onChange={(e) => set('valore_economico_eur', e.target.value)} />
+                      {valoreStimato && (
+                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                          <span>
+                            Stima Norma Granada: <strong>€ {valoreStimato.valore.toLocaleString('it-IT')}</strong>
+                            {valoreStimato.deprezzoPct > 0 ? ` (deprezzo sanitario ${valoreStimato.deprezzoPct}%)` : ''}
+                          </span>
+                          <button type="button" className="rounded bg-green-700 px-2 py-0.5 font-semibold text-white"
+                            onClick={() => set('valore_economico_eur', String(valoreStimato.valore))}>usa</button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -1468,6 +1482,7 @@ export default function SurveyPage() {
               <Riga k="CO₂ assorbita / anno" v={co2AnnuaStimata != null ? `${co2AnnuaStimata.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="O₂ prodotto / anno" v={o2Stimato != null ? `${o2Stimato.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="PM10 rimosso / anno" v={pm10Stimato != null ? `${pm10Stimato.toLocaleString('it-IT')} g/anno` : '—'} />
+              <Riga k="Valore ornamentale" v={r.valore_economico_eur ? `€ ${Number(r.valore_economico_eur).toLocaleString('it-IT')}` : (valoreStimato ? `€ ${valoreStimato.valore.toLocaleString('it-IT')} (stima Norma Granada)` : '—')} />
               {r.inclinazione_tipo && (
                 <Riga k="Inclinazione" v={`${r.inclinazione_tipo}${r.inclinazione_gradi !== '' && r.inclinazione_gradi != null ? ` · ${r.inclinazione_gradi}°` : ''}${r.curvatura_correttiva ? ' · curvatura correttiva' : ''}`} />
               )}

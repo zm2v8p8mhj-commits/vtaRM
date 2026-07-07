@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx'
 import { CPC_META, DISTRETTI } from './constants'
 import { gravitaLabel, normalizzaDifetti, gravitaDistretto, rischioResiduo, descriviConseguenza } from './cpc'
-import { stimaO2Annua, stimaPM10Annuo } from './servizi'
+import { stimaO2Annua, stimaPM10Annuo, valoreOrnamentale } from './servizi'
 
 // una coppia di colonne (difetti + gravità max) per ciascun distretto
 function difettiColonne(a) {
@@ -78,7 +78,8 @@ export function esportaExcel(alberi, comuni, contaFoto, nomeFile = 'censimento_v
     'O2 prodotto (kg/anno)': stimaO2Annua(a.specie_botanica, a.dbh_cm, a.altezza_m, a.fase_sviluppo, a.vigoria) ?? '',
     'PM10 rimosso (g/anno)': stimaPM10Annuo(a.diametro_chioma_m, a.vigoria) ?? '',
     'Canopy cover effettivo (m²)': a.canopy_cover_m2 ?? '',
-    'Valore economico (€)': a.valore_economico_eur ?? '',
+    'Valore ornamentale (€)': a.valore_economico_eur ?? '',
+    'Valore ornamentale stima Norma Granada (€)': valoreOrnamentale(a)?.valore ?? '',
     'Inclinazione tipo': a.inclinazione_tipo || '',
     'Inclinazione (°)': a.inclinazione_gradi ?? '',
     'Curvatura correttiva': a.curvatura_correttiva ? 'Sì' : '',

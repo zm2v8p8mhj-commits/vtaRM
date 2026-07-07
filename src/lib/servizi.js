@@ -94,3 +94,45 @@ export function stimaPM10Annuo(diametroChiomaM, vigoria) {
   if (cc == null) return null
   return Math.round(cc * PM10_G_PER_M2_ANNO * 10) / 10
 }
+
+// ---------------------------------------------------------------------------
+// Valore ornamentale (metodo Norma Granada, versione speditiva e trasparente).
+// Valore = sezione del fusto (cm²) × prezzo unitario × coeff. specie × coeff. sanitario.
+//  - sezione del fusto: dal DBH (o dalla circonferenza), proxy della "quantità" di albero
+//  - coeff. specie: pregio/lentezza di crescita
+//  - coeff. sanitario: deprezzamento per condizioni fitosanitarie (vigoria)
+// I parametri (in particolare il prezzo unitario €/cm²) sono tarabili dal tecnico.
+// È una STIMA orientativa a supporto del rapporto costi/benefici, non una perizia.
+// ---------------------------------------------------------------------------
+const PREZZO_SEZIONE_EUR_CM2 = 3 // €/cm² di sezione del fusto (parametro tarabile)
+
+const COEFF_SPECIE_VALORE = {
+  'quercus': 1.3, 'olea': 1.3, 'pinus pinea': 1.2, 'cupressus sempervirens': 1.15,
+  'tilia': 1.1, 'celtis': 1.1, 'cupressus': 1.05, 'platanus': 1.0, 'fraxinus': 1.0,
+  'cercis': 1.0, 'ulmus': 0.95, 'morus': 0.85, 'ligustrum': 0.8, 'populus': 0.7,
+  'eucalyptus': 0.7, 'acer negundo': 0.6, 'robinia': 0.6, 'ailanthus': 0.5, 'melia': 0.7,
+}
+function coeffSpecieValore(specie) {
+  if (!specie) return 1
+  const s = specie.trim().toLowerCase()
+  for (const k of Object.keys(COEFF_SPECIE_VALORE)) {
+    if (s.includes(k)) return COEFF_SPECIE_VALORE[k]
+  }
+  return 1
+}
+
+// deprezzamento sanitario (frazione di valore persa) per condizioni fitosanitarie
+const DEPREZZO_SANITARIO = { Buona: 0, Media: 0.3, Scarsa: 0.6, Deperimento: 0.9 }
+
+export function valoreOrnamentale(record) {
+  let D = Number(record.dbh_cm)
+  if (!Number.isFinite(D) || D <= 0) {
+    const circ = Number(record.circonferenza_cm)
+    if (Number.isFinite(circ) && circ > 0) D = circ / Math.PI
+  }
+  if (!Number.isFinite(D) || D <= 0) return null
+  const sezione = Math.PI * (D / 2) ** 2 // cm²
+  const deprezzo = record.vigoria in DEPREZZO_SANITARIO ? DEPREZZO_SANITARIO[record.vigoria] : 0
+  const valore = sezione * PREZZO_SEZIONE_EUR_CM2 * coeffSpecieValore(record.specie_botanica) * (1 - deprezzo)
+  return { valore: Math.round(valore), deprezzoPct: Math.round(deprezzo * 100) }
+}
