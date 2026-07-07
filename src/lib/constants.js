@@ -112,7 +112,7 @@ export const DIFETTI_COLLETTO = [
 export const DIFETTI_FUSTO6 = [
   'Cavità', 'Carie / legno degradato', 'Legno disfunzionale', 'Fessurazioni / cretti',
   'Corteccia inclusa', 'Carpofori', 'Cordoni xilematici', 'Ferite / lesioni corticali',
-  'Inclinazione anomala', 'Legno di reazione insufficiente', 'Cancri', 'Essudati',
+  'Legno di reazione insufficiente', 'Cancri', 'Essudati',
 ]
 export const DIFETTI_CASTELLO = [
   'Corteccia inclusa nelle inserzioni', 'Branche codominanti', 'Inclinazione / arcuatura',

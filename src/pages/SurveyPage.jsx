@@ -1195,6 +1195,23 @@ export default function SurveyPage() {
                   <strong> Override: Classe D</strong> e abbattimento/messa in sicurezza immediata.
                 </span>
               </label>
+
+              <div>
+                <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-green-700">
+                  📷 Foto inclinazione
+                  <input type="file" accept="image/*" multiple className="hidden"
+                    onChange={(e) => aggiungiFoto(e, 'Inclinazione')} />
+                </label>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {nuoveFoto.filter((f) => f.tag === 'Inclinazione').map((f) => (
+                    <div key={f.url} className="relative">
+                      <img src={f.url} alt="" className="h-14 w-14 rounded object-cover" />
+                      <button type="button" onClick={() => rimuoviFoto(f.url)}
+                        className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-red-600 text-[10px] font-bold leading-none text-white">×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="card border-2 border-red-200 bg-red-50/50">
