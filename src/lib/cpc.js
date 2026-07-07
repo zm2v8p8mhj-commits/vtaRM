@@ -190,11 +190,11 @@ export function fattoreConseguenza(record) {
   }
 }
 
-// descrizione discorsiva pronta per scheda/verbale
+// descrizione discorsiva pronta per scheda/verbale (qualitativa: nessun numero)
 export function descriviConseguenza(record) {
   const f = fattoreConseguenza(record)
   const parti = [f.parte ? `parte critica: ${f.parte}` : null, `bersaglio: ${f.bersaglio}`].filter(Boolean)
-  return `${f.livello} (${parti.join('; ')}; indice C = ${f.c.toLocaleString('it-IT')})`
+  return `${f.livello} (${parti.join('; ')})`
 }
 
 // suggerimento prudenziale: quando la conseguenza è Alta ma la classe di rischio

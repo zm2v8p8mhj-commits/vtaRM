@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { CPC_META, CLASSE_RISCHIO_META } from './constants'
-import { sintesiStato, accettabilitaRischio, rischioResiduo, descriviConseguenza } from './cpc'
+import { sintesiStato, rischioResiduo, descriviConseguenza } from './cpc'
 import { urlToDataURL, dimensioniImg } from './pdf'
 
 // ----------------------------------------------------------------------------
@@ -210,6 +210,12 @@ export async function generaReport(
       doc.setTextColor(0)
       y += Math.max(righe.length * 4.2, 5) + 1.6
     }
+    paragrafo(
+      'Accettabilità del rischio (ISO 31000): Basso = accettabile; Moderato = tollerabile con monitoraggio; ' +
+        'Elevato = tollerabile solo se ridotto per quanto ragionevolmente praticabile (ALARP); Estremo = inaccettabile.',
+      MUTE,
+      8
+    )
   }
 
   // ---- stato generale del verde (descrizione discorsiva del tecnico)
@@ -265,8 +271,6 @@ export async function generaReport(
       const residuo = rischioResiduo(a)
       if (residuo && residuo !== a.classe_rischio) campi.push(['Rischio residuo', `${residuo} (atteso, a interventi eseguiti)`])
       campi.push(['Conseguenza', descriviConseguenza(a)])
-      const acc = accettabilitaRischio(a.classe_rischio)
-      if (acc) campi.push(['Accettabilità', acc])
       if (a.inclinazione_tipo && a.inclinazione_tipo !== 'Assente') campi.push(['Inclinazione', `${a.inclinazione_tipo}${a.inclinazione_gradi != null ? ` – ${a.inclinazione_gradi}°` : ''}`])
       if (a.motivazione_scelte) campi.push(['Motivazione', a.motivazione_scelte])
 

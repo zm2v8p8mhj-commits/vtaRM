@@ -1,7 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { CPC_META } from './constants'
 import { sintesiStato, gravitaLabel, normalizzaDifetti, accettabilitaRischio, rischioResiduo, descriviConseguenza, nudgeConseguenza } from './cpc'
-import { stimaO2Annua, stimaPM10Annuo } from './servizi'
 
 // distretti mostrati nella scheda PDF (6 nuovi + "radici" dei record vecchi)
 const DISTRETTI_PDF = [
@@ -284,17 +283,12 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     ? `${albero.prescrizioni_gestionali}${albero.urgenza_intervento ? ` (${albero.urgenza_intervento})` : ''}` : '—')
   if (albero.mitigazione_bersaglio) riga('Mitigazione bersaglio',
     `${albero.mitigazione_bersaglio}${albero.urgenza_mitigazione ? ` (${albero.urgenza_mitigazione})` : ''}`)
-  // O₂ e PM10 sono derivati al volo dalla biometria (non serve salvarli)
-  const o2 = stimaO2Annua(albero.specie_botanica, albero.dbh_cm, albero.altezza_m, albero.fase_sviluppo, albero.vigoria)
-  const pm10 = stimaPM10Annuo(albero.diametro_chioma_m, albero.vigoria)
-  if (albero.co2_stoccata_kg != null || albero.canopy_cover_m2 != null || albero.co2_kg_anno != null || o2 != null || pm10 != null || albero.valore_economico_eur != null) {
+  if (albero.co2_stoccata_kg != null || albero.canopy_cover_m2 != null || albero.co2_kg_anno != null || albero.valore_economico_eur != null) {
     riga('Servizi ecosistemici', [
       albero.co2_stoccata_kg != null ? `CO₂ stoccata ${albero.co2_stoccata_kg} kg` : null,
       albero.co2_kg_anno != null ? `CO₂ assorbita ${albero.co2_kg_anno} kg/anno` : null,
-      o2 != null ? `O₂ prodotto ${o2} kg/anno` : null,
-      pm10 != null ? `PM10 rimosso ${pm10} g/anno` : null,
       albero.canopy_cover_m2 != null ? `canopy effettivo ${albero.canopy_cover_m2} m²` : null,
-      albero.valore_economico_eur != null ? `valore ornamentale € ${albero.valore_economico_eur} (Norma Granada)` : null,
+      albero.valore_economico_eur != null ? `valore ornamentale € ${albero.valore_economico_eur}` : null,
     ].filter(Boolean).join(' · '))
   }
   if (albero.inclinazione_tipo) {
