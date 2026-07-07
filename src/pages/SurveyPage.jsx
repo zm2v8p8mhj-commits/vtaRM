@@ -79,6 +79,11 @@ function recordVuoto() {
     // valori
     co2_kg_anno: '',
     valore_economico_eur: '',
+    // elementi per relazione (linee guida CONAF)
+    compartimentazione: '',
+    apc_m: '',
+    suolo_zpa: '',
+    limiti_valutazione: '',
     url_foto: [],
     foto_difetti: {},
   }
@@ -467,6 +472,7 @@ export default function SurveyPage() {
       lunghezza_branca_m: num(r.lunghezza_branca_m),
       altezza_branca_m: num(r.altezza_branca_m),
       altezza_bersaglio_m: num(r.altezza_bersaglio_m),
+      apc_m: num(r.apc_m),
       valore_economico_eur: num(r.valore_economico_eur),
       // servizi ecosistemici: usa il valore inserito a mano (PC) o la stima automatica
       co2_stoccata_kg: num(r.co2_stoccata_kg) ?? co2Stimata,
@@ -1263,6 +1269,38 @@ export default function SurveyPage() {
                     <label className="mb-1 block text-sm font-medium">Note gestione / cronologia interventi</label>
                     <textarea className="field" rows="2" value={r.note_gestione} onChange={(e) => set('note_gestione', e.target.value)} placeholder="es. potatura 2024, irrigazione di soccorso…" />
                   </div>
+
+                  {/* Elementi per relazione secondo le linee guida CONAF */}
+                  <p className="pt-1 text-xs font-semibold text-slate-500">Elementi per relazione (linee guida CONAF)</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Compartimentazione (CODIT)</label>
+                      <select className="field" value={r.compartimentazione} onChange={(e) => set('compartimentazione', e.target.value)}>
+                        <option value="">—</option>
+                        <option>Buona</option>
+                        <option>Media</option>
+                        <option>Scarsa</option>
+                        <option>Non valutabile</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">APC – Area Potenziale di Caduta (raggio, m)</label>
+                      <input type="number" step="0.5" min="0" className="field" value={r.apc_m}
+                        onChange={(e) => set('apc_m', e.target.value)}
+                        placeholder={r.altezza_m ? `indicativo ≈ ${r.altezza_m}` : 'raggio in metri'} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Condizioni del suolo nella ZPA (Zona di Protezione dell'Albero)</label>
+                    <input className="field" value={r.suolo_zpa} onChange={(e) => set('suolo_zpa', e.target.value)}
+                      placeholder="es. suolo compattato, pavimentato, scavi/trincee recenti, ristagno…" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Limiti della valutazione</label>
+                    <textarea className="field" rows="2" value={r.limiti_valutazione} onChange={(e) => set('limiti_valutazione', e.target.value)}
+                      placeholder="es. parti non visibili, difetti ipogei non indagabili visivamente, limitazioni stagionali (chioma spoglia)…" />
+                  </div>
+
                   <label className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                     <input type="checkbox" className="h-4 w-4 accent-green-700"
                       checked={Number.isFinite(Number(r.co2_stoccata_kg)) && r.co2_stoccata_kg !== ''}
@@ -1329,6 +1367,10 @@ export default function SurveyPage() {
               <Riga k="CO₂ assorbita / anno" v={co2AnnuaStimata != null ? `${co2AnnuaStimata.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="O₂ prodotto / anno" v={o2Stimato != null ? `${o2Stimato.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="PM10 rimosso / anno" v={pm10Stimato != null ? `${pm10Stimato.toLocaleString('it-IT')} g/anno` : '—'} />
+              {r.compartimentazione && <Riga k="Compartimentazione (CODIT)" v={r.compartimentazione} />}
+              {r.apc_m !== '' && r.apc_m != null && <Riga k="APC (raggio)" v={`~ ${r.apc_m} m`} />}
+              {r.suolo_zpa && <Riga k="Suolo nella ZPA" v={r.suolo_zpa} />}
+              {r.limiti_valutazione && <Riga k="Limiti della valutazione" v={r.limiti_valutazione} />}
               <Riga k="Foto" v={`${(r.url_foto?.length || 0) + nuoveFoto.length} allegate`} />
             </div>
 

@@ -395,6 +395,18 @@ export async function generaReport(
       'relazione tecnica conclusiva, alla quale si rinvia per le valutazioni di dettaglio e le eventuali ' +
       'indagini strumentali di approfondimento.'
   )
+
+  sezione('Limiti della valutazione')
+  paragrafo(
+    'La valutazione è di tipo visivo (Livello 1) e si basa sui difetti e sui sintomi esterni rilevabili al ' +
+      'momento del sopralluogo. Restano pertanto esclusi i difetti interni e ipogei non manifesti e non ' +
+      'indagabili visivamente, nonché le condizioni non osservabili per fattori stagionali o di accessibilità ' +
+      '(chioma spoglia, parti non ispezionabili, apparato radicale coperto). Per gli esemplari con propensione ' +
+      'elevata o quadro non dirimente l\'esito è subordinato all\'approfondimento strumentale di Livello 2. ' +
+      'Eventuali limiti specifici del singolo esemplare sono riportati nella relativa scheda.',
+    MUTE,
+    8.6
+  )
   controllaPagina(26)
   y += 8
   doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(...INK)

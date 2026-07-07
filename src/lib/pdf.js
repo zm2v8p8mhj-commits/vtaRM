@@ -297,6 +297,10 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
       albero.valore_economico_eur != null ? `valore € ${albero.valore_economico_eur}` : null,
     ].filter(Boolean).join(' · '))
   }
+  if (albero.compartimentazione) riga('Compartimentazione (CODIT)', albero.compartimentazione)
+  if (albero.apc_m != null) riga('Area Potenziale di Caduta', `raggio indicativo ~ ${albero.apc_m} m`)
+  if (albero.suolo_zpa) riga('Suolo nella ZPA', albero.suolo_zpa)
+  if (albero.limiti_valutazione) riga('Limiti della valutazione', albero.limiti_valutazione)
   if (albero.data_ultimo_intervento) riga('Ultimo intervento', new Date(albero.data_ultimo_intervento).toLocaleDateString('it-IT'))
   if (albero.note_gestione) riga('Note gestione', albero.note_gestione)
 

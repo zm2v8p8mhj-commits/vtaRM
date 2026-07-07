@@ -16,6 +16,7 @@ const CAMPI_PROPRIETA = [
   'data_prossimo_controllo', 'prescrizioni_gestionali', 'urgenza_intervento',
   'mitigazione_bersaglio', 'urgenza_mitigazione',
   'co2_stoccata_kg', 'co2_kg_anno', 'canopy_cover_m2', 'valore_economico_eur',
+  'compartimentazione', 'apc_m', 'suolo_zpa', 'limiti_valutazione',
   'data_ultimo_intervento', 'note_gestione',
   'url_foto', 'foto_difetti',
 ]
