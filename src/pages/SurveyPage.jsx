@@ -13,6 +13,7 @@ import { valutaConformitaCAM } from '../lib/cam'
 import { canopyCover, stimaCO2, stimaCO2Annua, stimaO2Annua, stimaPM10Annuo } from '../lib/servizi'
 import { getFotoByAlbero } from '../lib/db'
 import CpcBadge from '../components/CpcBadge'
+import Inclinometro from '../components/Inclinometro'
 
 const PASSI = ['Identificazione', 'Biometria', 'Contesto', 'Difetti', 'Sintesi', 'Riepilogo']
 
@@ -116,6 +117,20 @@ export default function SurveyPage() {
   const [codiceManuale, setCodiceManuale] = useState(false)
   const [erroreCom, setErroreCom] = useState('')
   const [gps, setGps] = useState({ stato: 'inattivo', accuratezza: null })
+  const [inclinometroAperto, setInclinometroAperto] = useState(false)
+
+  // apre l'inclinometro; su iOS 13+ il permesso ai sensori va chiesto nel gesto
+  const apriInclinometro = async () => {
+    try {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        const esito = await DeviceMotionEvent.requestPermission()
+        if (esito !== 'granted') return
+      }
+    } catch {
+      /* alcuni browser lanciano fuori da un gesto: proviamo comunque ad aprire */
+    }
+    setInclinometroAperto(true)
+  }
   const [errori, setErrori] = useState([])
   const [salvato, setSalvato] = useState(false)
   const watchRef = useRef(null)
@@ -1117,9 +1132,14 @@ export default function SurveyPage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium">Gradi di inclinazione (°)</label>
-                  <input type="number" step="1" min="0" max="90"
-                    className={`field ${Number(r.inclinazione_gradi) >= 20 ? 'border-red-400 bg-red-50' : Number(r.inclinazione_gradi) >= 15 ? 'border-orange-400 bg-orange-50' : ''}`}
-                    value={r.inclinazione_gradi} onChange={(e) => set('inclinazione_gradi', e.target.value)} placeholder="es. 12" />
+                  <div className="flex gap-2">
+                    <input type="number" step="1" min="0" max="90"
+                      className={`field ${Number(r.inclinazione_gradi) >= 20 ? 'border-red-400 bg-red-50' : Number(r.inclinazione_gradi) >= 15 ? 'border-orange-400 bg-orange-50' : ''}`}
+                      value={r.inclinazione_gradi} onChange={(e) => set('inclinazione_gradi', e.target.value)} placeholder="es. 12" />
+                    <button type="button" onClick={apriInclinometro}
+                      className="shrink-0 rounded-lg bg-green-700 px-3 text-sm font-semibold text-white active:scale-95"
+                      title="Misura con la livella del telefono">📐 Misura</button>
+                  </div>
                   {Number(r.inclinazione_gradi) >= 15 && (
                     <p className={`mt-1 text-xs font-semibold ${Number(r.inclinazione_gradi) >= 20 ? 'text-red-700' : 'text-orange-600'}`}>
                       ⚠️ Inclinazione {Number(r.inclinazione_gradi) >= 20 ? 'marcata' : 'significativa'} — verificare la risposta adattativa.
@@ -1519,6 +1539,17 @@ export default function SurveyPage() {
           )}
         </div>
       </div>
+
+      {inclinometroAperto && (
+        <Inclinometro
+          onRegistra={(gradi) => {
+            set('inclinazione_gradi', String(gradi))
+            if (!r.inclinazione_tipo) set('inclinazione_tipo', 'Lineare')
+            setInclinometroAperto(false)
+          }}
+          onChiudi={() => setInclinometroAperto(false)}
+        />
+      )}
     </div>
   )
 }
