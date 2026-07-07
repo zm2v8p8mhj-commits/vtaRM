@@ -34,10 +34,27 @@ export function gravitaLabel(v) {
   return GRAVITA[v]?.label || 'Assente'
 }
 
+const ORD_CPC = ['A', 'B', 'C', 'C/D', 'D']
+
+// inclinazione lineare recente/attiva (≥15°) senza curvatura correttiva:
+// segno di cedimento in atto → eleva di una classe la propensione
+export function inclinazionePericolosa(record) {
+  const g = Number(record.inclinazione_gradi)
+  return (
+    record.inclinazione_tipo === 'Lineare' &&
+    !record.curvatura_correttiva &&
+    Number.isFinite(g) &&
+    g >= 15
+  )
+}
+
 export function suggerisciCPC(record) {
-  // override di emergenza: segni di cedimento imminente → forza Classe D
-  if (record.intervento_emergenza) return 'D'
-  return GRAVITA[gravitaMassima(record)]?.cpc || 'A'
+  // override: segni di cedimento imminente o instabilità al suolo → Classe D
+  if (record.intervento_emergenza || record.instabilita_suolo) return 'D'
+  const base = GRAVITA[gravitaMassima(record)]?.cpc || 'A'
+  if (!inclinazionePericolosa(record)) return base
+  const i = ORD_CPC.indexOf(base)
+  return i >= 0 && i < ORD_CPC.length - 1 ? ORD_CPC[i + 1] : base
 }
 
 export function dataProssimoControllo(cpc, daData = new Date()) {

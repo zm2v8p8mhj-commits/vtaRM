@@ -267,6 +267,8 @@ export async function generaReport(
       campi.push(['Conseguenza', descriviConseguenza(a)])
       const acc = accettabilitaRischio(a.classe_rischio)
       if (acc) campi.push(['Accettabilità', acc])
+      if (a.inclinazione_tipo && a.inclinazione_tipo !== 'Assente') campi.push(['Inclinazione', `${a.inclinazione_tipo}${a.inclinazione_gradi != null ? ` – ${a.inclinazione_gradi}°` : ''}`])
+      if (a.motivazione_scelte) campi.push(['Motivazione', a.motivazione_scelte])
 
       let foto = null
       const dett = fotoDettagli ? fotoDettagli(a) : []
@@ -401,9 +403,10 @@ export async function generaReport(
     'La valutazione è di tipo visivo (Livello 1) e si basa sui difetti e sui sintomi esterni rilevabili al ' +
       'momento del sopralluogo. Restano pertanto esclusi i difetti interni e ipogei non manifesti e non ' +
       'indagabili visivamente, nonché le condizioni non osservabili per fattori stagionali o di accessibilità ' +
-      '(chioma spoglia, parti non ispezionabili, apparato radicale coperto). Per gli esemplari con propensione ' +
+      '(chioma spoglia, parti non ispezionabili, apparato radicale coperto). La valutazione non può inoltre ' +
+      'prevedere i cedimenti dovuti a eventi meteorici eccezionali. Per gli esemplari con propensione ' +
       'elevata o quadro non dirimente l\'esito è subordinato all\'approfondimento strumentale di Livello 2. ' +
-      'Eventuali limiti specifici del singolo esemplare sono riportati nella relativa scheda.',
+      'Eventuali limiti e motivazioni specifiche del singolo esemplare sono riportati nella relativa scheda.',
     MUTE,
     8.6
   )

@@ -79,11 +79,17 @@ function recordVuoto() {
     // valori
     co2_kg_anno: '',
     valore_economico_eur: '',
+    // inclinazione (modulo pericolo)
+    inclinazione_tipo: '',
+    inclinazione_gradi: '',
+    curvatura_correttiva: false,
+    instabilita_suolo: false,
     // elementi per relazione (linee guida CONAF)
     compartimentazione: '',
     apc_m: '',
     suolo_zpa: '',
     limiti_valutazione: '',
+    motivazione_scelte: '',
     url_foto: [],
     foto_difetti: {},
   }
@@ -473,6 +479,9 @@ export default function SurveyPage() {
       altezza_branca_m: num(r.altezza_branca_m),
       altezza_bersaglio_m: num(r.altezza_bersaglio_m),
       apc_m: num(r.apc_m),
+      inclinazione_gradi: num(r.inclinazione_gradi),
+      // l'instabilità al suolo è un segno di cedimento imminente: attiva l'emergenza
+      intervento_emergenza: r.intervento_emergenza || r.instabilita_suolo,
       valore_economico_eur: num(r.valore_economico_eur),
       // servizi ecosistemici: usa il valore inserito a mano (PC) o la stima automatica
       co2_stoccata_kg: num(r.co2_stoccata_kg) ?? co2Stimata,
@@ -1089,6 +1098,55 @@ export default function SurveyPage() {
               </div>
             </div>
 
+            <div className="card space-y-3">
+              <h3 className="font-bold text-green-900">Inclinazione del fusto</h3>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Tipo di inclinazione</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Assente', 'Lineare', 'Arcuata', 'Sciabolata/Sinuosa'].map((t) => (
+                    <button key={t} type="button" onClick={() => set('inclinazione_tipo', r.inclinazione_tipo === t ? '' : t)}
+                      className={`rounded-full px-4 py-1.5 text-sm font-medium ${r.inclinazione_tipo === t ? 'bg-green-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Lineare = spesso recente/attiva (pericolosa). Arcuata / Sciabolata / Sinuosa = di norma compensata.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Gradi di inclinazione (°)</label>
+                  <input type="number" step="1" min="0" max="90"
+                    className={`field ${Number(r.inclinazione_gradi) >= 20 ? 'border-red-400 bg-red-50' : Number(r.inclinazione_gradi) >= 15 ? 'border-orange-400 bg-orange-50' : ''}`}
+                    value={r.inclinazione_gradi} onChange={(e) => set('inclinazione_gradi', e.target.value)} placeholder="es. 12" />
+                  {Number(r.inclinazione_gradi) >= 15 && (
+                    <p className={`mt-1 text-xs font-semibold ${Number(r.inclinazione_gradi) >= 20 ? 'text-red-700' : 'text-orange-600'}`}>
+                      ⚠️ Inclinazione {Number(r.inclinazione_gradi) >= 20 ? 'marcata' : 'significativa'} — verificare la risposta adattativa.
+                    </p>
+                  )}
+                </div>
+                <label className="flex items-center gap-2 text-sm sm:mt-7">
+                  <input type="checkbox" className="h-4 w-4 accent-green-700"
+                    checked={r.curvatura_correttiva} onChange={(e) => set('curvatura_correttiva', e.target.checked)} />
+                  Curvatura correttiva presente (risposta gravitropica a S/C)
+                </label>
+              </div>
+              {r.inclinazione_tipo === 'Lineare' && !r.curvatura_correttiva && Number(r.inclinazione_gradi) >= 15 && (
+                <p className="rounded-lg bg-orange-100 px-3 py-2 text-xs text-orange-800">
+                  Inclinazione lineare attiva senza curvatura correttiva → la propensione suggerita viene <strong>elevata di una classe</strong>.
+                </p>
+              )}
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border-2 border-red-200 bg-red-50/60 p-2.5">
+                <input type="checkbox" className="mt-0.5 h-5 w-5 accent-red-600"
+                  checked={r.instabilita_suolo} onChange={(e) => set('instabilita_suolo', e.target.checked)} />
+                <span className="text-sm">
+                  <strong className="text-red-700">Instabilità al suolo</strong> — sollevamento della zolla o cretti/fessure sul lato sopravento.
+                  <strong> Override: Classe D</strong> e abbattimento/messa in sicurezza immediata.
+                </span>
+              </label>
+            </div>
+
             <div className="card border-2 border-red-200 bg-red-50/50">
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input type="checkbox" className="mt-0.5 h-5 w-5 accent-red-600"
@@ -1300,6 +1358,11 @@ export default function SurveyPage() {
                     <textarea className="field" rows="2" value={r.limiti_valutazione} onChange={(e) => set('limiti_valutazione', e.target.value)}
                       placeholder="es. parti non visibili, difetti ipogei non indagabili visivamente, limitazioni stagionali (chioma spoglia)…" />
                   </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Motivazione delle scelte</label>
+                    <textarea className="field" rows="2" value={r.motivazione_scelte} onChange={(e) => set('motivazione_scelte', e.target.value)}
+                      placeholder="es. indagine strumentale non eseguita per restrizioni di sicurezza del sito; abbattimento urgente motivato dai segnali premonitori rilevati…" />
+                  </div>
 
                   <label className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                     <input type="checkbox" className="h-4 w-4 accent-green-700"
@@ -1367,10 +1430,15 @@ export default function SurveyPage() {
               <Riga k="CO₂ assorbita / anno" v={co2AnnuaStimata != null ? `${co2AnnuaStimata.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="O₂ prodotto / anno" v={o2Stimato != null ? `${o2Stimato.toLocaleString('it-IT')} kg/anno` : '—'} />
               <Riga k="PM10 rimosso / anno" v={pm10Stimato != null ? `${pm10Stimato.toLocaleString('it-IT')} g/anno` : '—'} />
+              {r.inclinazione_tipo && (
+                <Riga k="Inclinazione" v={`${r.inclinazione_tipo}${r.inclinazione_gradi !== '' && r.inclinazione_gradi != null ? ` · ${r.inclinazione_gradi}°` : ''}${r.curvatura_correttiva ? ' · curvatura correttiva' : ''}`} />
+              )}
+              {r.instabilita_suolo && <Riga k="Instabilità al suolo" v="Sì — override Classe D" />}
               {r.compartimentazione && <Riga k="Compartimentazione (CODIT)" v={r.compartimentazione} />}
               {r.apc_m !== '' && r.apc_m != null && <Riga k="APC (raggio)" v={`~ ${r.apc_m} m`} />}
               {r.suolo_zpa && <Riga k="Suolo nella ZPA" v={r.suolo_zpa} />}
               {r.limiti_valutazione && <Riga k="Limiti della valutazione" v={r.limiti_valutazione} />}
+              {r.motivazione_scelte && <Riga k="Motivazione delle scelte" v={r.motivazione_scelte} />}
               <Riga k="Foto" v={`${(r.url_foto?.length || 0) + nuoveFoto.length} allegate`} />
             </div>
 
