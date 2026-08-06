@@ -113,7 +113,7 @@ export async function generaReport(
   doc.setFont('helvetica', 'bold').setFontSize(9.5).setTextColor(...INK)
   doc.text(TECNICO, MARGINE, y)
   doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...MUTE)
-  doc.text('Dottore Agronomo · ODAF Lecce n° 636 · idearurale', MARGINE, y + 4.3)
+  doc.text('Dottore Agronomo · ODAF Lecce n° 636', MARGINE, y + 4.3)
   doc.setTextColor(0)
   y += 11
 

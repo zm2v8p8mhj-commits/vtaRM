@@ -524,7 +524,7 @@ export default function SurveyPage() {
       canopy_cover_m2: canopyStimato,
       co2_kg_anno: co2AnnuaStimata,
       // su mobile la parte gestionale resta da confermare in studio
-      note_gestione: r.note_gestione || (!isDesktop ? 'Da confermare in studio' : ''),
+      note_gestione: r.note_gestione || '',
       comune_nome: comuni.find((c) => c.id === r.comune_id)?.nome,
     }
     await salvaAlbero(record, nuoveFoto)
@@ -1489,8 +1489,7 @@ export default function SurveyPage() {
               ) : (
                 <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
                   📋 Data ultimo intervento, note di gestione e conferma dei valori si completano
-                  <strong> in studio dal PC</strong>: questo rilievo verrà salvato con la dicitura
-                  «Da confermare in studio».
+                  <strong> in studio dal PC</strong>.
                 </div>
               )}
             </div>
