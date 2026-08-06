@@ -1377,6 +1377,62 @@ export default function SurveyPage() {
                 regionale). La CO₂ è una stima allometrica, non sostituisce i-Tree.
               </p>
 
+              {/* Osservazioni di campo per la relazione — disponibili anche su telefono */}
+              <div className="space-y-3 border-t border-slate-100 pt-3">
+                <p className="text-xs font-semibold text-slate-500">Contesto e osservazioni (per la relazione)</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Posizione sociale</label>
+                    <select className="field" value={r.posizione_sociale} onChange={(e) => set('posizione_sociale', e.target.value)}>
+                      <option value="">—</option>
+                      {POSIZIONE_SOCIALE.map((o) => (<option key={o}>{o}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Dimora</label>
+                    <select className="field" value={r.contesto_dimora} onChange={(e) => set('contesto_dimora', e.target.value)}>
+                      <option value="">—</option>
+                      {CONTESTO_DIMORA.map((o) => (<option key={o}>{o}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Localizzazione</label>
+                    <select className="field" value={r.contesto_localizzazione} onChange={(e) => set('contesto_localizzazione', e.target.value)}>
+                      <option value="">—</option>
+                      {CONTESTO_LOCALIZZAZIONE.map((o) => (<option key={o}>{o}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Vincolo</label>
+                    <select className="field" value={r.vincolo} onChange={(e) => set('vincolo', e.target.value)}>
+                      <option value="">—</option>
+                      {VINCOLI.map((o) => (<option key={o}>{o}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Compartimentazione (CODIT)</label>
+                    <select className="field" value={r.compartimentazione} onChange={(e) => set('compartimentazione', e.target.value)}>
+                      <option value="">—</option>
+                      <option>Buona</option>
+                      <option>Media</option>
+                      <option>Scarsa</option>
+                      <option>Non valutabile</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">APC – Area Potenziale di Caduta (raggio, m)</label>
+                    <input type="number" step="0.5" min="0" className="field" value={r.apc_m}
+                      onChange={(e) => set('apc_m', e.target.value)}
+                      placeholder={r.altezza_m ? `indicativo ≈ ${r.altezza_m}` : 'raggio in metri'} />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Condizioni del suolo nella ZPA (Zona di Protezione dell'Albero)</label>
+                  <input className="field" value={r.suolo_zpa} onChange={(e) => set('suolo_zpa', e.target.value)}
+                    placeholder="es. suolo compattato, pavimentato, scavi/trincee recenti, ristagno…" />
+                </div>
+              </div>
+
               {isDesktop ? (
                 <div className="space-y-3 border-t border-slate-100 pt-3">
                   <p className="text-xs font-semibold text-slate-500">Gestione (completamento in studio)</p>
@@ -1401,38 +1457,6 @@ export default function SurveyPage() {
                     </div>
                   </div>
 
-                  {/* Contesto per il valore ornamentale (modello dello studio) */}
-                  <p className="pt-1 text-xs font-semibold text-slate-500">Valore ornamentale — contesto</p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium">Posizione sociale</label>
-                      <select className="field" value={r.posizione_sociale} onChange={(e) => set('posizione_sociale', e.target.value)}>
-                        <option value="">—</option>
-                        {POSIZIONE_SOCIALE.map((o) => (<option key={o}>{o}</option>))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium">Dimora</label>
-                      <select className="field" value={r.contesto_dimora} onChange={(e) => set('contesto_dimora', e.target.value)}>
-                        <option value="">—</option>
-                        {CONTESTO_DIMORA.map((o) => (<option key={o}>{o}</option>))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium">Localizzazione</label>
-                      <select className="field" value={r.contesto_localizzazione} onChange={(e) => set('contesto_localizzazione', e.target.value)}>
-                        <option value="">—</option>
-                        {CONTESTO_LOCALIZZAZIONE.map((o) => (<option key={o}>{o}</option>))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium">Vincolo</label>
-                      <select className="field" value={r.vincolo} onChange={(e) => set('vincolo', e.target.value)}>
-                        <option value="">—</option>
-                        {VINCOLI.map((o) => (<option key={o}>{o}</option>))}
-                      </select>
-                    </div>
-                  </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Valore massimo di riferimento (€) <span className="font-normal text-slate-400">— tetto locale, tarabile</span></label>
                     <input type="number" step="1000" min="0" className="field" value={r.valore_max_rif}
@@ -1445,29 +1469,6 @@ export default function SurveyPage() {
 
                   {/* Elementi per relazione secondo le linee guida CONAF */}
                   <p className="pt-1 text-xs font-semibold text-slate-500">Elementi per relazione (linee guida CONAF)</p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium">Compartimentazione (CODIT)</label>
-                      <select className="field" value={r.compartimentazione} onChange={(e) => set('compartimentazione', e.target.value)}>
-                        <option value="">—</option>
-                        <option>Buona</option>
-                        <option>Media</option>
-                        <option>Scarsa</option>
-                        <option>Non valutabile</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium">APC – Area Potenziale di Caduta (raggio, m)</label>
-                      <input type="number" step="0.5" min="0" className="field" value={r.apc_m}
-                        onChange={(e) => set('apc_m', e.target.value)}
-                        placeholder={r.altezza_m ? `indicativo ≈ ${r.altezza_m}` : 'raggio in metri'} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">Condizioni del suolo nella ZPA (Zona di Protezione dell'Albero)</label>
-                    <input className="field" value={r.suolo_zpa} onChange={(e) => set('suolo_zpa', e.target.value)}
-                      placeholder="es. suolo compattato, pavimentato, scavi/trincee recenti, ristagno…" />
-                  </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Limiti della valutazione</label>
                     <textarea className="field" rows="2" value={r.limiti_valutazione} onChange={(e) => set('limiti_valutazione', e.target.value)}
