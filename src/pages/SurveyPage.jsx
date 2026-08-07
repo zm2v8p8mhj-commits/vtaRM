@@ -531,6 +531,24 @@ export default function SurveyPage() {
     setSalvato(true)
   }
 
+  // navigazione tra le schede in ordine di codice (solo studio, PC): stesso
+  // committente, ordinate per numero finale del codice (NAR-2026-001, -002, …)
+  const schedeOrdinate = useMemo(
+    () =>
+      alberi
+        .filter((a) => a.comune_id === r.comune_id && a.codice)
+        .sort((a, b) => a.codice.localeCompare(b.codice, 'it', { numeric: true })),
+    [alberi, r.comune_id]
+  )
+  const idxScheda = schedeOrdinate.findIndex((a) => a.id === r.id)
+  const schedaPrec = idxScheda > 0 ? schedeOrdinate[idxScheda - 1] : null
+  const schedaSucc = idxScheda >= 0 && idxScheda < schedeOrdinate.length - 1 ? schedeOrdinate[idxScheda + 1] : null
+
+  const salvaEProssima = async () => {
+    await salva()
+    if (schedaSucc) navigate(`/rilievo/${schedaSucc.id}`)
+  }
+
   const cpcSuggerita = useMemo(() => suggerisciCPC(r), [r])
   const rischioSuggerito = useMemo(
     () => suggerisciRischio(r.cpc || cpcSuggerita, r.frequenza_occupazione),
@@ -800,6 +818,32 @@ export default function SurveyPage() {
         <h2 className="text-lg font-bold text-green-900">
           {id ? `Modifica ${r.codice}` : 'Nuovo rilievo'} · {PASSI[passo]}
         </h2>
+
+        {/* Navigazione tra schede in ordine di codice — solo studio (PC) */}
+        {id && isDesktop && idxScheda >= 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-green-200 bg-green-50/60 px-3 py-2">
+            <div className="text-xs font-semibold text-green-900">
+              Scheda {idxScheda + 1} di {schedeOrdinate.length}
+              <span className="ml-2 font-normal text-slate-500">{comuni.find((c) => c.id === r.comune_id)?.nome || ''}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="btn-secondary" disabled={!schedaPrec}
+                onClick={() => schedaPrec && navigate(`/rilievo/${schedaPrec.id}`)}
+                title={schedaPrec ? `Vai a ${schedaPrec.codice}` : 'Prima scheda'}>
+                ◀ Precedente
+              </button>
+              <button type="button" className="btn-secondary" disabled={!schedaSucc}
+                onClick={() => schedaSucc && navigate(`/rilievo/${schedaSucc.id}`)}
+                title={schedaSucc ? `Vai a ${schedaSucc.codice}` : 'Ultima scheda'}>
+                Successiva ▶
+              </button>
+              <button type="button" className="btn-primary" onClick={salvaEProssima}
+                title={schedaSucc ? `Salva e vai a ${schedaSucc.codice}` : 'Salva (ultima scheda)'}>
+                💾 Salva e prossima{schedaSucc ? ` → ${schedaSucc.codice.split('-').pop()}` : ''}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ============================== PASSO 0: identificazione + GPS + foto */}
         {passo === 0 && (
