@@ -808,12 +808,23 @@ export default function SurveyPage() {
       <div className="mx-auto max-w-2xl space-y-4 p-4">
         {/* indicatore passi */}
         <div className="flex items-center gap-1">
-          {PASSI.map((p, i) => (
-            <div key={p} className="flex-1">
-              <div className={`h-1.5 rounded-full ${i <= passo ? 'bg-green-700' : 'bg-slate-200'}`} />
-              <div className={`mt-1 hidden text-[10px] font-medium sm:block ${i === passo ? 'text-green-800' : 'text-slate-400'}`}>{p}</div>
-            </div>
-          ))}
+          {PASSI.map((p, i) => {
+            const contenuto = (
+              <>
+                <div className={`h-1.5 rounded-full ${i <= passo ? 'bg-green-700' : 'bg-slate-200'}`} />
+                <div className={`mt-1 hidden text-[10px] font-medium sm:block ${i === passo ? 'text-green-800' : 'text-slate-400'}`}>{p}</div>
+              </>
+            )
+            // solo da PC: step cliccabili per saltare direttamente alla sotto-scheda
+            return isDesktop ? (
+              <button key={p} type="button" className="flex-1 text-left transition hover:opacity-70"
+                onClick={() => { setErrori([]); setPasso(i) }} title={`Vai a ${p}`}>
+                {contenuto}
+              </button>
+            ) : (
+              <div key={p} className="flex-1">{contenuto}</div>
+            )
+          })}
         </div>
         <h2 className="text-lg font-bold text-green-900">
           {id ? `Modifica ${r.codice}` : 'Nuovo rilievo'} · {PASSI[passo]}
