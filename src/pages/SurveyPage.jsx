@@ -222,6 +222,13 @@ export default function SurveyPage() {
     setR(caricato)
   }, [id, alberi])
 
+  // cambiando scheda (id) si torna al form, non alla schermata "Rilievo salvato".
+  // Deps SOLO [id]: un normale salvataggio (che cambia 'alberi' ma non l'id) non
+  // deve far sparire la schermata di conferma.
+  useEffect(() => {
+    setSalvato(false)
+  }, [id])
+
   // ------------------------------------------------------------ committente
   // Sintesi della campagna in corso per il committente selezionato:
   // quanti alberi censiti, prossimo codice, data ultimo rilievo.
