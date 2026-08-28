@@ -403,15 +403,9 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   if (albero.data_ultimo_intervento) riga('Ultimo intervento', new Date(albero.data_ultimo_intervento).toLocaleDateString('it-IT'))
   if (albero.note_gestione) riga('Note gestione', albero.note_gestione)
 
-  // Servizi ecosistemici in sezione propria: una riga per voce, leggibile
-  if (albero.co2_stoccata_kg != null || albero.co2_kg_anno != null || albero.canopy_cover_m2 != null || albero.valore_economico_eur != null) {
-    const num = (v) => Number(v).toLocaleString('it-IT')
-    titoloSezione('6. Servizi ecosistemici e valore')
-    if (albero.co2_stoccata_kg != null) riga('CO2 stoccata', `${num(albero.co2_stoccata_kg)} kg`)
-    if (albero.co2_kg_anno != null) riga('CO2 assorbita', `${num(albero.co2_kg_anno)} kg/anno`)
-    if (albero.canopy_cover_m2 != null) riga('Canopy cover effettivo', `${num(albero.canopy_cover_m2)} m² (chioma corretta per vigoria)`)
-    if (albero.valore_economico_eur != null) riga('Valore ornamentale', `€ ${num(albero.valore_economico_eur)}`)
-  }
+  // Valore ornamentale e servizi ecosistemici: consultabili a video nell'app
+  // e negli export (Excel/GeoJSON); fuori dalla scheda, che resta un documento
+  // di stabilita' e sicurezza.
 
   // Foto in coda alla scheda: grandi e a piena larghezza (≈2 per pagina), con
   // proporzioni reali e qualità massima, didascalia del difetto se presente.
@@ -462,7 +456,7 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     const GAP_X = 6 // mm tra le colonne
     const GAP_Y = 7 // mm tra una riga fotografica e la successiva
     const COL_W = (LARGHEZZA - GAP_X) / 2
-    const MAX_H_CELLA = 62 // altezza massima dell'immagine in griglia
+    const MAX_H_CELLA = 78 // altezza massima dell'immagine in griglia (+25%)
     const H_DIDASCALIA = 8.5 // didascalia + nome file
     const unaSola = ordinate.length === 1
 
@@ -477,7 +471,7 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     if (unaSola) {
       // foto singola: usa tutta la larghezza (evita una cella piccola e vuota)
       const it = ordinate[0]
-      const { w, h } = dim(it, LARGHEZZA, 150)
+      const { w, h } = dim(it, LARGHEZZA, 165)
       controllaPagina(h + H_DIDASCALIA + 16)
       titoloSezione('Documentazione fotografica')
       try {
