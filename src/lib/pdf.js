@@ -351,7 +351,20 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   if (albero.note_osservazioni) riga('Note', albero.note_osservazioni)
   // sintesi descrittiva: a piena larghezza, secondaria rispetto alla decisione
   {
-    const testo = sintesiStato(albero)
+    // sintesi descrittiva dei difetti, completata con la postura del fusto:
+    // testo composto qui (la funzione condivisa sintesiStato resta invariata)
+    const parti = [sintesiStato(albero)]
+    if (albero.inclinazione_tipo && albero.inclinazione_tipo !== 'Assente') {
+      const gradi = albero.inclinazione_gradi != null ? ` di circa ${albero.inclinazione_gradi}°` : ''
+      const curv = albero.curvatura_correttiva
+        ? 'con curvatura correttiva (risposta adattativa presente)'
+        : 'senza curvatura correttiva'
+      parti.push(`Inclinazione del fusto di tipo ${albero.inclinazione_tipo.toLowerCase()}${gradi}, ${curv}.`)
+    }
+    if (albero.instabilita_suolo) {
+      parti.push('Rilevata instabilità al suolo (sollevamento della zolla o cretti sul lato sopravento).')
+    }
+    const testo = parti.join(' ')
     const righe = doc.setFont('helvetica', 'normal').setFontSize(8.5).splitTextToSize(testo, LARGHEZZA - 4)
     controllaPagina(righe.length * 4 + 8)
     y += 1.5
