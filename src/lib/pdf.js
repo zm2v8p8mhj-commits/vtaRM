@@ -137,15 +137,28 @@ export function dimensioniImg(dataUrl) {
 async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   let y = 16
 
+  // --- scala tipografica e spaziature: poche costanti riusate ovunque, così le
+  // sezioni hanno padding e interlinea uniformi (equivalente delle variabili CSS)
+  const F_TITOLO = 10      // intestazione di sezione
+  const F_LABEL = 9        // etichetta
+  const F_VALORE = 9       // valore
+  const F_NOTA = 7.5       // note secondarie
+  const INTERLINEA = 4.5   // altezza di riga del testo
+  const SP_RIGA = 1.5      // spazio dopo ogni riga label/valore
+  const SP_SEZIONE = 3     // spazio prima di una nuova intestazione di sezione
+  const LABEL_W = 52       // larghezza della colonna etichette
+  const VAL_X = MARGINE + LABEL_W
+  const VAL_W = LARGHEZZA - LABEL_W - 2
+
   const intestazione = () => {
     doc.setFillColor(22, 101, 52)
     doc.rect(0, 0, 210, 24, 'F')
     doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(13)
-    doc.text('SCHEDA DI VALUTAZIONE VTA – Visual Tree Assessment', MARGINE, 10)
-    doc.setFontSize(9).setFont('helvetica', 'normal')
+    doc.text('SCHEDA DI VALUTAZIONE VTA – Visual Tree Assessment', MARGINE, 11)
+    doc.setFontSize(8.5).setFont('helvetica', 'normal').setTextColor(214, 235, 222)
     doc.text(
       `${comuneNome ? `${comuneNome} – ` : ''}Censimento e gestione del verde pubblico`,
-      MARGINE, 17
+      MARGINE, 17.5
     )
     doc.setTextColor(0)
     y = 32
@@ -158,24 +171,93 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     }
   }
 
+  // il titolo non resta orfano a fondo pagina: riserva spazio anche per la
+  // prima riga di contenuto (equivalente di break-after: avoid)
   const titoloSezione = (testo) => {
-    controllaPagina(12)
+    y += SP_SEZIONE
+    controllaPagina(20)
     doc.setFillColor(240, 253, 244)
     doc.rect(MARGINE, y - 4.5, LARGHEZZA, 7, 'F')
-    doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(22, 101, 52)
+    doc.setFont('helvetica', 'bold').setFontSize(F_TITOLO).setTextColor(22, 101, 52)
     doc.text(testo.toUpperCase(), MARGINE + 2, y)
     doc.setTextColor(0)
-    y += 7
+    y += 7.5
   }
 
+  // etichetta rimpicciolita quanto basta per non invadere la colonna dei valori
+  // (risolve i casi come "Conformità CAM Verde Urbano:")
+  const scriviEtichetta = (etichetta, yy) => {
+    let size = F_LABEL
+    doc.setFont('helvetica', 'bold')
+    while (size > 6.5) {
+      doc.setFontSize(size)
+      if (doc.getTextWidth(`${etichetta}:`) <= LABEL_W - 5) break
+      size -= 0.25
+    }
+    doc.text(`${etichetta}:`, MARGINE + 2, yy)
+    doc.setFontSize(F_LABEL)
+  }
+
+  // riga etichetta/valore: colonne allineate, valore mai troncato (va a capo)
   const riga = (etichetta, valore) => {
-    controllaPagina(6)
-    doc.setFont('helvetica', 'bold').setFontSize(9)
-    doc.text(`${etichetta}:`, MARGINE + 2, y)
-    doc.setFont('helvetica', 'normal')
-    const righe = doc.splitTextToSize(String(valore ?? '—'), LARGHEZZA - 52)
-    doc.text(righe, MARGINE + 50, y)
-    y += righe.length * 4.5 + 1.5
+    const righe = doc.setFont('helvetica', 'normal').setFontSize(F_VALORE)
+      .splitTextToSize(String(valore ?? '—'), VAL_W)
+    controllaPagina(righe.length * INTERLINEA + SP_RIGA)
+    scriviEtichetta(etichetta, y)
+    doc.setFont('helvetica', 'normal').setFontSize(F_VALORE)
+    doc.text(righe, VAL_X, y)
+    y += righe.length * INTERLINEA + SP_RIGA
+  }
+
+  // nota secondaria (piccola, grigia), sotto la riga a cui si riferisce
+  const nota = (testo) => {
+    const righe = doc.setFont('helvetica', 'normal').setFontSize(F_NOTA)
+      .splitTextToSize(testo, VAL_W)
+    controllaPagina(righe.length * 3.6 + 1)
+    doc.setTextColor(120)
+    doc.text(righe, VAL_X, y)
+    doc.setTextColor(0)
+    y += righe.length * 3.6 + 1.5
+  }
+
+  // difetti di un distretto: categoria anatomica a sinistra, un difetto per riga
+  const rigaDifetti = (categoria, difetti) => {
+    const voci = difetti.map((d) => doc.setFont('helvetica', 'normal').setFontSize(F_VALORE)
+      .splitTextToSize(d, VAL_W))
+    const nRighe = voci.reduce((n, v) => n + v.length, 0)
+    controllaPagina(nRighe * INTERLINEA + 2)
+    scriviEtichetta(categoria, y)
+    let yy = y
+    doc.setFont('helvetica', 'normal').setFontSize(F_VALORE)
+    for (const v of voci) {
+      doc.text(v, VAL_X, yy)
+      yy += v.length * INTERLINEA
+    }
+    y = yy + 2
+  }
+
+  // riquadro sobrio con le informazioni decisionali: non viene mai spezzato
+  const boxSintesi = (titolo, voci) => {
+    const righe = voci.filter(([, v]) => v != null && v !== '')
+    if (!righe.length) return
+    const H_RIGA = 5.6
+    const h = 8 + righe.length * H_RIGA + 3
+    controllaPagina(h + 3)
+    doc.setDrawColor(22, 101, 52).setLineWidth(0.4)
+    doc.rect(MARGINE, y - 4, LARGHEZZA, h, 'S')
+    doc.setLineWidth(0.2)
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(22, 101, 52)
+    doc.text(titolo.toUpperCase(), MARGINE + 3, y)
+    doc.setTextColor(0)
+    let yy = y + 6
+    for (const [et, val, forte] of righe) {
+      doc.setFont('helvetica', 'bold').setFontSize(8.5)
+      doc.text(et, MARGINE + 3, yy)
+      doc.setFont('helvetica', forte ? 'bold' : 'normal').setFontSize(forte ? 9.5 : 9)
+      doc.text(doc.splitTextToSize(String(val), LARGHEZZA - 62)[0], MARGINE + 58, yy)
+      yy += H_RIGA
+    }
+    y += h + 1
   }
 
   intestazione()
@@ -207,12 +289,13 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   doc.setFont('helvetica', 'italic').setFontSize(11)
   doc.text(albero.specie_botanica || '', MARGINE, yTop + 13)
   const [r, g, b] = hexToRgb(meta.color)
+  const BADGE_W = 74
   doc.setFillColor(r, g, b)
-  doc.roundedRect(MARGINE, yTop + 18, 56, 14, 2, 2, 'F')
-  doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(8.5)
-  doc.text('CLASSE CPC', MARGINE + 28, yTop + 23, { align: 'center' })
-  doc.setFontSize(12)
-  doc.text(meta.label, MARGINE + 28, yTop + 29, { align: 'center' })
+  doc.roundedRect(MARGINE, yTop + 18, BADGE_W, 15, 2, 2, 'F')
+  doc.setTextColor(255).setFont('helvetica', 'bold').setFontSize(7)
+  doc.text('PROPENSIONE AL CEDIMENTO', MARGINE + BADGE_W / 2, yTop + 23, { align: 'center' })
+  doc.setFontSize(11.5)
+  doc.text(`CPC ${meta.label}`, MARGINE + BADGE_W / 2, yTop + 29.5, { align: 'center' })
   doc.setTextColor(0)
 
   y = yTop + 46
@@ -257,7 +340,7 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   titoloSezione('4. Analisi dei difetti')
   for (const [nome, sez] of DISTRETTI_PDF) {
     const ds = normalizzaDifetti(albero[sez])
-    if (ds.length) riga(nome, ds.map((d) => `${d.nome} (${gravitaLabel(d.gravita).toLowerCase()})`).join('; '))
+    if (ds.length) rigaDifetti(nome, ds.map((d) => `${d.nome} (${gravitaLabel(d.gravita).toLowerCase()})`))
   }
   // inclinazione: è un difetto di postura dell'intero albero → sta con i difetti
   if (albero.inclinazione_tipo) {
@@ -266,27 +349,50 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   }
   if (albero.instabilita_suolo) riga('Instabilità al suolo', 'Rilevata (sollevamento zolla / cretti sopravento) – override Classe D')
   if (albero.note_osservazioni) riga('Note', albero.note_osservazioni)
-  riga('Sintesi stato', sintesiStato(albero))
+  // sintesi descrittiva: a piena larghezza, secondaria rispetto alla decisione
+  {
+    const testo = sintesiStato(albero)
+    const righe = doc.setFont('helvetica', 'normal').setFontSize(8.5).splitTextToSize(testo, LARGHEZZA - 4)
+    controllaPagina(righe.length * 4 + 8)
+    y += 1.5
+    doc.setFont('helvetica', 'bold').setFontSize(F_LABEL)
+    doc.text('Sintesi stato:', MARGINE + 2, y)
+    y += 4.5
+    doc.setFont('helvetica', 'normal').setFontSize(8.5)
+    doc.text(righe, MARGINE + 2, y)
+    y += righe.length * 4 + 2
+  }
 
   titoloSezione('5. Sintesi tecnica e gestione')
-  riga('Classe CPC', meta.label)
+
+  // Blocco decisionale: le informazioni che il tecnico comunale deve leggere
+  // subito. Usa esclusivamente campi già presenti nel record (prescrizione e
+  // urgenza sono due campi distinti, quindi si separano senza toccare i dati).
+  boxSintesi('Valutazione e prescrizioni', [
+    ['Propensione al cedimento (CPC)', meta.label, true],
+    ['Livello di rischio', albero.classe_rischio || '—', true],
+    ['Intervento', albero.prescrizioni_gestionali || '—', true],
+    ['Urgenza', albero.urgenza_intervento || '—', false],
+    ['Prossimo controllo', albero.data_prossimo_controllo
+      ? new Date(albero.data_prossimo_controllo).toLocaleDateString('it-IT') : '—', false],
+  ])
+
   if (albero.classe_rischio) {
-    // ISO 31000: rischio = propensione (CPC) × conseguenza (bersaglio) + accettabilità
+    // ISO 31000: il rischio è la propensione (CPC) incrociata con il bersaglio
     const acc = accettabilitaRischio(albero.classe_rischio)
-    riga('Classe di rischio', `${albero.classe_rischio}${acc ? ` — ${acc}` : ''}`)
+    if (acc) nota(`Livello di rischio ${albero.classe_rischio}: ${acc}`)
+    riga('Conseguenza attesa', descriviConseguenza(albero))
     const residuo = rischioResiduo(albero)
     if (residuo && residuo !== albero.classe_rischio) {
-      riga('Rischio residuo atteso', `${residuo} (indicativo, a seguito degli interventi prescritti)`)
+      // sequenza esplicita: rischio attuale → intervento → rischio residuo
+      riga('Rischio residuo atteso post-intervento', residuo)
+      nota('Stima indicativa a seguito dell\'esecuzione degli interventi prescritti.')
     }
-    riga('Conseguenza attesa', descriviConseguenza(albero))
     const nudge = nudgeConseguenza(albero)
-    if (nudge) riga('Nota cautelativa', nudge)
+    if (nudge) nota(nudge)
   }
   riga('Indagine strumentale', albero.richiesta_indagine_strumentale
     ? `Sì – ${albero.tipo_indagine_richiesta || ''}${albero.urgenza_indagine ? ` (${albero.urgenza_indagine})` : ''}` : 'No')
-  riga('Prossimo controllo', albero.data_prossimo_controllo ? new Date(albero.data_prossimo_controllo).toLocaleDateString('it-IT') : '—')
-  riga('Interventi colturali', albero.prescrizioni_gestionali
-    ? `${albero.prescrizioni_gestionali}${albero.urgenza_intervento ? ` (${albero.urgenza_intervento})` : ''}` : '—')
   if (albero.mitigazione_bersaglio) riga('Mitigazione bersaglio',
     `${albero.mitigazione_bersaglio}${albero.urgenza_mitigazione ? ` (${albero.urgenza_mitigazione})` : ''}`)
   if (albero.compartimentazione) riga('Compartimentazione (CODIT)', albero.compartimentazione)
@@ -301,8 +407,8 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   if (albero.co2_stoccata_kg != null || albero.co2_kg_anno != null || albero.canopy_cover_m2 != null || albero.valore_economico_eur != null) {
     const num = (v) => Number(v).toLocaleString('it-IT')
     titoloSezione('6. Servizi ecosistemici e valore')
-    if (albero.co2_stoccata_kg != null) riga('CO₂ stoccata', `${num(albero.co2_stoccata_kg)} kg`)
-    if (albero.co2_kg_anno != null) riga('CO₂ assorbita', `${num(albero.co2_kg_anno)} kg/anno`)
+    if (albero.co2_stoccata_kg != null) riga('CO2 stoccata', `${num(albero.co2_stoccata_kg)} kg`)
+    if (albero.co2_kg_anno != null) riga('CO2 assorbita', `${num(albero.co2_kg_anno)} kg/anno`)
     if (albero.canopy_cover_m2 != null) riga('Canopy cover effettivo', `${num(albero.canopy_cover_m2)} m² (chioma corretta per vigoria)`)
     if (albero.valore_economico_eur != null) riga('Valore ornamentale', `€ ${num(albero.valore_economico_eur)}`)
   }
