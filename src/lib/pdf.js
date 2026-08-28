@@ -259,6 +259,12 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     const ds = normalizzaDifetti(albero[sez])
     if (ds.length) riga(nome, ds.map((d) => `${d.nome} (${gravitaLabel(d.gravita).toLowerCase()})`).join('; '))
   }
+  // inclinazione: è un difetto di postura dell'intero albero → sta con i difetti
+  if (albero.inclinazione_tipo) {
+    riga('Inclinazione del fusto', `${albero.inclinazione_tipo}${albero.inclinazione_gradi != null ? ` – ${albero.inclinazione_gradi}°` : ''}` +
+      `${albero.curvatura_correttiva ? ' · curvatura correttiva presente' : ' · nessuna curvatura correttiva'}`)
+  }
+  if (albero.instabilita_suolo) riga('Instabilità al suolo', 'Rilevata (sollevamento zolla / cretti sopravento) – override Classe D')
   if (albero.note_osservazioni) riga('Note', albero.note_osservazioni)
   riga('Sintesi stato', sintesiStato(albero))
 
@@ -283,19 +289,6 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     ? `${albero.prescrizioni_gestionali}${albero.urgenza_intervento ? ` (${albero.urgenza_intervento})` : ''}` : '—')
   if (albero.mitigazione_bersaglio) riga('Mitigazione bersaglio',
     `${albero.mitigazione_bersaglio}${albero.urgenza_mitigazione ? ` (${albero.urgenza_mitigazione})` : ''}`)
-  if (albero.co2_stoccata_kg != null || albero.canopy_cover_m2 != null || albero.co2_kg_anno != null || albero.valore_economico_eur != null) {
-    riga('Servizi ecosistemici', [
-      albero.co2_stoccata_kg != null ? `CO₂ stoccata ${albero.co2_stoccata_kg} kg` : null,
-      albero.co2_kg_anno != null ? `CO₂ assorbita ${albero.co2_kg_anno} kg/anno` : null,
-      albero.canopy_cover_m2 != null ? `canopy effettivo ${albero.canopy_cover_m2} m²` : null,
-      albero.valore_economico_eur != null ? `valore ornamentale € ${albero.valore_economico_eur}` : null,
-    ].filter(Boolean).join(' · '))
-  }
-  if (albero.inclinazione_tipo) {
-    riga('Inclinazione', `${albero.inclinazione_tipo}${albero.inclinazione_gradi != null ? ` – ${albero.inclinazione_gradi}°` : ''}` +
-      `${albero.curvatura_correttiva ? ' (curvatura correttiva presente)' : ''}`)
-  }
-  if (albero.instabilita_suolo) riga('Instabilità al suolo', 'Rilevata (sollevamento zolla / cretti sopravento) – override Classe D')
   if (albero.compartimentazione) riga('Compartimentazione (CODIT)', albero.compartimentazione)
   if (albero.apc_m != null) riga('Area Potenziale di Caduta', `raggio indicativo ~ ${albero.apc_m} m`)
   if (albero.suolo_zpa) riga('Suolo nella ZPA', albero.suolo_zpa)
@@ -303,6 +296,16 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
   if (albero.motivazione_scelte) riga('Motivazione delle scelte', albero.motivazione_scelte)
   if (albero.data_ultimo_intervento) riga('Ultimo intervento', new Date(albero.data_ultimo_intervento).toLocaleDateString('it-IT'))
   if (albero.note_gestione) riga('Note gestione', albero.note_gestione)
+
+  // Servizi ecosistemici in sezione propria: una riga per voce, leggibile
+  if (albero.co2_stoccata_kg != null || albero.co2_kg_anno != null || albero.canopy_cover_m2 != null || albero.valore_economico_eur != null) {
+    const num = (v) => Number(v).toLocaleString('it-IT')
+    titoloSezione('6. Servizi ecosistemici e valore')
+    if (albero.co2_stoccata_kg != null) riga('CO₂ stoccata', `${num(albero.co2_stoccata_kg)} kg`)
+    if (albero.co2_kg_anno != null) riga('CO₂ assorbita', `${num(albero.co2_kg_anno)} kg/anno`)
+    if (albero.canopy_cover_m2 != null) riga('Canopy cover effettivo', `${num(albero.canopy_cover_m2)} m² (chioma corretta per vigoria)`)
+    if (albero.valore_economico_eur != null) riga('Valore ornamentale', `€ ${num(albero.valore_economico_eur)}`)
+  }
 
   // Foto in coda alla scheda: grandi e a piena larghezza (≈2 per pagina), con
   // proporzioni reali e qualità massima, didascalia del difetto se presente.
