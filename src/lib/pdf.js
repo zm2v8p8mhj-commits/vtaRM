@@ -321,37 +321,104 @@ async function renderScheda(doc, albero, fotoUrls = [], comuneNome = '') {
     const dim = await dimensioniImg(dataUrl)
     conData.push({ caption: it.caption || '', nome: it.nome || '', dataUrl, ...dim })
   }
+
   if (conData.length) {
-    titoloSezione('Documentazione fotografica')
-    const MAX_H = 112 // mm: con la didascalia ne stanno ~2 per pagina
-    for (const it of conData) {
-      let w = LARGHEZZA
+    // --- ordinamento: prima le viste generali, poi i dettagli diagnostici in
+    // sequenza anatomica (zolla → colletto → fusto → castello → branche → chioma)
+    const ORDINE_DISTRETTI = ['zolla radicale', 'radici', 'colletto', 'fusto', 'castello', 'branche e rami', 'chioma']
+    const categoriaDi = (c) => (c || '').split('·')[0].trim().toLowerCase()
+    const rango = (it) => {
+      if (!it.caption) return 0 // vista generale dell'albero
+      if (categoriaDi(it.caption) === 'inclinazione') return 1
+      const i = ORDINE_DISTRETTI.indexOf(categoriaDi(it.caption))
+      return i >= 0 ? 10 + i : 2 // altre foto senza categoria nota: con le generali
+    }
+    const ordinate = [...conData].sort((a, b) => rango(a) - rango(b))
+
+    // --- didascalia tecnica: "Foto 03 — Fusto · Cavità (significativa)".
+    // La gravità, se ritrovabile nel record, arricchisce il difetto.
+    const gravitaDi = (caption) => {
+      const [cat, dif] = (caption || '').split('·').map((s) => s.trim())
+      if (!cat || !dif) return ''
+      const voce = DISTRETTI_PDF.find(([nome]) => nome.toLowerCase() === cat.toLowerCase())
+      if (!voce) return ''
+      const trovato = normalizzaDifetti(albero[voce[1]]).find((d) => d.nome?.toLowerCase() === dif.toLowerCase())
+      return trovato ? ` (${gravitaLabel(trovato.gravita).toLowerCase()})` : ''
+    }
+    const didascalia = (it, n) => {
+      const num = `Foto ${String(n).padStart(2, '0')}`
+      if (!it.caption) return `${num} — Vista generale`
+      return `${num} — ${it.caption}${gravitaDi(it.caption)}`
+    }
+
+    // --- griglia a 2 colonne: le immagini mantengono le proporzioni reali
+    // (equivalente di object-fit: contain — nessun ritaglio, nessuna deformazione)
+    const GAP_X = 6 // mm tra le colonne
+    const GAP_Y = 7 // mm tra una riga fotografica e la successiva
+    const COL_W = (LARGHEZZA - GAP_X) / 2
+    const MAX_H_CELLA = 62 // altezza massima dell'immagine in griglia
+    const H_DIDASCALIA = 8.5 // didascalia + nome file
+    const unaSola = ordinate.length === 1
+
+    // dimensioni finali di ciascuna immagine dentro la sua cella
+    const dim = (it, larghCella, maxH) => {
+      let w = larghCella
       let h = (w * it.h) / it.w
-      if (h > MAX_H) {
-        h = MAX_H
-        w = (h * it.w) / it.h
-      }
-      controllaPagina(h + 14)
-      const x = MARGINE + (LARGHEZZA - w) / 2 // centrata
+      if (h > maxH) { h = maxH; w = (h * it.w) / it.h } // verticali: si adattano in altezza
+      return { w, h }
+    }
+
+    if (unaSola) {
+      // foto singola: usa tutta la larghezza (evita una cella piccola e vuota)
+      const it = ordinate[0]
+      const { w, h } = dim(it, LARGHEZZA, 150)
+      controllaPagina(h + H_DIDASCALIA + 16)
+      titoloSezione('Documentazione fotografica')
       try {
-        doc.addImage(it.dataUrl, 'JPEG', x, y, w, h, undefined, 'SLOW')
-      } catch {
-        continue
-      }
-      y += h + 1.5
-      if (it.caption) {
+        doc.addImage(it.dataUrl, 'JPEG', MARGINE + (LARGHEZZA - w) / 2, y, w, h, undefined, 'SLOW')
+        y += h + 2
         doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(22, 101, 52)
-        doc.text(doc.splitTextToSize(it.caption, LARGHEZZA), MARGINE + 2, y + 3)
+        doc.text(didascalia(it, 1), MARGINE + 2, y + 3)
         doc.setTextColor(0)
-        y += 4.5
+        y += H_DIDASCALIA
+      } catch { /* immagine non inseribile: si ignora */ }
+    } else {
+      // righe da 2: la riga (immagini + didascalie) non viene mai spezzata
+      const righe = []
+      for (let i = 0; i < ordinate.length; i += 2) righe.push(ordinate.slice(i, i + 2))
+
+      // il titolo non resta orfano: serve spazio anche per la prima riga
+      const hRiga = (riga) => Math.max(...riga.map((it) => dim(it, COL_W, MAX_H_CELLA).h)) + H_DIDASCALIA
+      controllaPagina(hRiga(righe[0]) + 16)
+      titoloSezione('Documentazione fotografica')
+
+      let n = 0
+      for (const riga of righe) {
+        const h = hRiga(riga)
+        controllaPagina(h + GAP_Y)
+        const yRiga = y
+        riga.forEach((it, col) => {
+          n += 1
+          const d = dim(it, COL_W, MAX_H_CELLA)
+          const xCella = MARGINE + col * (COL_W + GAP_X)
+          const x = xCella + (COL_W - d.w) / 2 // immagine centrata nella cella
+          try {
+            doc.addImage(it.dataUrl, 'JPEG', x, yRiga, d.w, d.h, undefined, 'SLOW')
+          } catch {
+            return
+          }
+          // didascalie allineate al fondo della riga, così restano su una linea
+          const yCap = yRiga + (h - H_DIDASCALIA) + 3
+          doc.setFont('helvetica', 'bold').setFontSize(7.5).setTextColor(22, 101, 52)
+          doc.text(doc.splitTextToSize(didascalia(it, n), COL_W)[0], xCella, yCap)
+          if (it.nome) {
+            doc.setFont('helvetica', 'normal').setFontSize(5.5).setTextColor(175)
+            doc.text(doc.splitTextToSize(it.nome, COL_W)[0], xCella, yCap + 3.2)
+          }
+          doc.setTextColor(0)
+        })
+        y = yRiga + h + GAP_Y
       }
-      if (it.nome) {
-        doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(120)
-        doc.text(it.nome, MARGINE + 2, y + 3)
-        doc.setTextColor(0)
-        y += 4
-      }
-      y += 4
     }
   }
 
